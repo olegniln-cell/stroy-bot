@@ -43,7 +43,6 @@ from services.notify_jobs import (
 )
 from services.seed import seed_plans
 
-from fastapi import FastAPI
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 
@@ -51,12 +50,10 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 import hawkcatcher
 
 
-
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger(__name__)
-
 
 
 # --- Hawk integration ---
@@ -68,18 +65,18 @@ if HAWK_TOKEN and ENV_MODE not in ("test", "ci"):
         hawkcatcher.init(HAWK_TOKEN)
 
         # Отправляем тестовое событие (новый синтаксис Hawk)
-        hawkcatcher.send_event({
-            "message": "Hawk integration test",
-            "level": "info",
-            "context": {"env": ENV_MODE}
-        })
+        hawkcatcher.send_event(
+            {
+                "message": "Hawk integration test",
+                "level": "info",
+                "context": {"env": ENV_MODE},
+            }
+        )
         logger.info("✅ Hawk Catcher initialized and test event sent.")
     except Exception as e:
         logger.warning(f"⚠️ Hawk initialization failed: {e}")
 else:
     logger.info("ℹ️ Hawk Catcher disabled — no HAWK_TOKEN provided or ENV_MODE=test/ci.")
-
-
 
 
 # --- Глобальный перехватчик необработанных ошибок ---
@@ -101,10 +98,7 @@ async def start_health_server():
         return web.Response(text="OK", status=200)
 
     async def handle_metrics(request):
-        return web.Response(
-            body=generate_latest(),
-            content_type=CONTENT_TYPE_LATEST
-        )
+        return web.Response(body=generate_latest(), content_type=CONTENT_TYPE_LATEST)
 
     app = web.Application()
     app.router.add_get("/healthz", handle_health)
@@ -117,7 +111,6 @@ async def start_health_server():
     await site.start()
     logger.info(f"🩺 Health-check + Metrics запущены на порту {port}")
     logger.info("🟢 Bot ready: healthz OK, metrics OK, polling starting…")
-
 
 
 async def main():
@@ -203,6 +196,7 @@ async def billing_notifier(bot: Bot, session_pool: async_sessionmaker[AsyncSessi
 
 
 if __name__ == "__main__":
+
     def custom_loop():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)

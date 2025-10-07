@@ -26,6 +26,7 @@ else:
     load_dotenv(".env", override=False)
     print("⚠️ .env.test not found — loaded default .env (not recommended for tests)")
 
+
 # ----------------------
 # 🔹 Build URLs and enforce test safety
 # ----------------------
@@ -34,17 +35,18 @@ def ensure_sync_url(url: str) -> str:
         return ""
     return url.replace("+asyncpg", "+psycopg2") if "+asyncpg" in url else url
 
-ASYNC_TEST_DATABASE_URL = (
-    os.getenv("ASYNC_TEST_DATABASE_URL")
-    or os.getenv("DATABASE_URL")
+
+ASYNC_TEST_DATABASE_URL = os.getenv("ASYNC_TEST_DATABASE_URL") or os.getenv(
+    "DATABASE_URL"
 )
-SYNC_TEST_DATABASE_URL = (
-    os.getenv("SYNC_TEST_DATABASE_URL")
-    or ensure_sync_url(ASYNC_TEST_DATABASE_URL)
+SYNC_TEST_DATABASE_URL = os.getenv("SYNC_TEST_DATABASE_URL") or ensure_sync_url(
+    ASYNC_TEST_DATABASE_URL
 )
 
 if not ASYNC_TEST_DATABASE_URL:
-    raise RuntimeError("❌ ASYNC_TEST_DATABASE_URL not set — check .env.test or env_file")
+    raise RuntimeError(
+        "❌ ASYNC_TEST_DATABASE_URL not set — check .env.test or env_file"
+    )
 
 # Force DATABASE_URL to point to test DB
 os.environ["DATABASE_URL"] = ASYNC_TEST_DATABASE_URL
@@ -58,6 +60,7 @@ if "test" not in (ASYNC_TEST_DATABASE_URL or ""):
 
 logger.info(f"[pytest.conftest] ASYNC_TEST_DATABASE_URL={ASYNC_TEST_DATABASE_URL}")
 logger.info(f"[pytest.conftest] SYNC_TEST_DATABASE_URL={SYNC_TEST_DATABASE_URL}")
+
 
 # ----------------------
 # 🔹 Apply migrations (once per session)
@@ -83,6 +86,7 @@ def apply_migrations():
     command.upgrade(alembic_cfg, "head")
     logger.info("✅ Migrations applied")
 
+
 # ----------------------
 # 🔹 Async test session
 # ----------------------
@@ -92,6 +96,7 @@ async def engine(apply_migrations):
     yield async_engine
     await async_engine.dispose()
 
+
 @pytest_asyncio.fixture(scope="function")
 async def session(engine):
     async_session = sessionmaker(
@@ -99,6 +104,7 @@ async def session(engine):
     )
     async with async_session() as s:
         yield s
+
 
 # ----------------------
 # 🔹 Sync session (for cascade/unit tests)
