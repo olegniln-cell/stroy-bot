@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  saasbot_test_db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: saasuser
+      POSTGRES_PASSWORD: saaspass
+      POSTGRES_DB: saasdb_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saasuser -d saasdb_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7
+
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address :9001
+
+
+  tests:
+    image: python:3.12
+    working_dir: /app
+    volumes:
+      - ..:/app
+    depends_on:
+      saasbot_test_db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    environment:
+      POSTGRES_USER: saasuser
+      POSTGRES_PASSWORD: saaspass
+      POSTGRES_DB: saasdb_test
+      # Явно задаём обе переменные, чтобы код и тесты работали одинаково
+      DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@saasbot_test_db:5432/saasdb_test
+      TEST_DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@saasbot_test_db:5432/saasdb_test
+    command: >
+      bash -c "
+        export DEBIAN_FRONTEND=noninteractive &&
+        apt-get update -y &&
+        apt-get install -y postgresql-client >/dev/null &&
+        python -m pip install --upgrade pip &&
+        pip install -r requirements.txt &&
+        bash scripts/ci/wait_for_db.sh saasbot_test_db 5432 saasuser 300 &&
+        pytest -q tests --ignore=tests/smoke
+      "

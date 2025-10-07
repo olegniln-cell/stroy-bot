@@ -1,0 +1,14 @@
+# Ignore local env files (do NOT bake secrets into images)
+.env
+.env.test
+.env.local
+
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store

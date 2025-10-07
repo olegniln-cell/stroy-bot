@@ -1,0 +1,13 @@
+[flake8]
+max-line-length = 120
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    .eggs,
+    *.egg,
+    migrations,
+    alembic
+per-file-ignores =
+    scripts/ch_models_vs_db.py:E402

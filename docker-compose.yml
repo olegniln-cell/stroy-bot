@@ -1,0 +1,158 @@
+version: "3.9"
+
+services:
+  # Основная база
+  db:
+    image: postgres:15
+    container_name: saasbot_db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-saasdb}
+      POSTGRES_USER: ${POSTGRES_USER:-saasuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saaspass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Тестовая база (только для локальных тестов)
+  test_db:
+    image: postgres:15
+    container_name: saasbot_test_db
+    restart: unless-stopped
+    env_file:
+      - .env.test   # ✅ используем только этот файл
+    environment: {}  # ✅ пусто, чтобы не переопределялось из .env
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      default:
+        aliases:
+          - test_postgres
+
+  # Redis
+  redis:
+    image: redis:7
+    container_name: saasbot_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO
+  minio:
+    image: minio/minio
+    container_name: saasbot_minio
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://minio:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Бот
+  bot:
+    build: .
+    container_name: saasbot
+    init: true
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+    command: python main.py
+    volumes:
+      - ./migrations:/app/migrations
+
+  # Воркер
+  worker:
+    build: .
+    container_name: saasbot_worker
+    init: true
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: python worker.py
+
+
+  # --- Автоматический бэкап базы данных ---
+  backup:
+    image: postgres:15
+    container_name: saasbot_backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-saasdb}
+      POSTGRES_USER: ${POSTGRES_USER:-saasuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saaspass}
+      BACKUP_INTERVAL: ${BACKUP_INTERVAL:-86400}  # 24ч по умолчанию
+    volumes:
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c", "while true; do /backups/backup_db.sh; sleep ${BACKUP_INTERVAL:-86400}; done"]
+
+  # --- Grafana (дашборды для метрик Prometheus) ---
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: saasbot_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"            # веб-интерфейс Grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - bot                    # ждём, пока поднимется бот (метрики)
+    volumes:
+      - ./grafana_data:/var/lib/grafana  # сохраняем настройки локально
+
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+  minio_data:

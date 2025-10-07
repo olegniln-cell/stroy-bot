@@ -1,0 +1,39 @@
+aiogram==3.10.0
+python-dotenv==1.0.1
+
+# SQLAlchemy + utils (фиксируем версии, чтобы не было сюрпризов)
+sqlalchemy[asyncio]>=2.0.30,<2.1
+sqlalchemy-utils>=0.41.2
+
+# Миграции
+alembic>=1.13.2
+
+# Драйверы для БД
+asyncpg>=0.29
+psycopg2-binary>=2.9
+
+# HTTP + асинхронные утилиты
+aiohttp>=3.9
+aiosqlite>=0.19
+
+#  для метрик
+fastapi
+prometheus-client
+
+# Валидация данных
+pydantic>=2.4,<2.9
+
+
+# AWS SDK
+boto3>=1.35
+
+# Планировщик задач
+apscheduler==3.10.4
+
+
+# Тестирование
+pytest>=8.0
+pytest-asyncio>=0.23
+
+# Мониторинг ошибок аналог Sentry
+hawkcatcher

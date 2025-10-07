@@ -1,0 +1,7 @@
+-r requirements.txt
+pytest
+pytest-html
+pytest-asyncio>=0.23
+pytest-cov
+safety
+bandit

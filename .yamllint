@@ -1,0 +1,5 @@
+extends: default
+
+rules:
+  document-start: disable   # отключает требование про ---
+  line-length: disable      # отключает ограничение в 80 символов
