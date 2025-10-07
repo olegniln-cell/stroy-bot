@@ -529,6 +529,12 @@ com: ## Коммитим изменения (пример: make com m="fix: ci c
 puch: ## Пушим изменения в main
 	git push origin main
 
+ydi: ## удалить файл из индекса
+	git rm --cached migrations/versions/имя-файла.py
+ydf: ## удалить файл локально
+	rm migrations/versions/имя-файла.py
+
+
 testbazaud: ## удаление базы тестовой и таблиц и создание новой
 	docker exec -it saasbot_test_db psql -U saasuser -d saasdb_test -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
