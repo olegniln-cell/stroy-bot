@@ -529,7 +529,7 @@ com: ## Коммитим изменения (пример: make com m="fix: ci c
 puch: ## Пушим изменения в main
 	git push origin main
 
-p2v: ## Пушим в ветку
+puch2: ## Пушим в ветку
 	git push origin ci/unit-tests-fix
 
 

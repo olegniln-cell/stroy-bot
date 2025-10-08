@@ -36,11 +36,15 @@ def ensure_sync_url(url: str) -> str:
     return url.replace("+asyncpg", "+psycopg2") if "+asyncpg" in url else url
 
 
-ASYNC_TEST_DATABASE_URL = os.getenv("ASYNC_TEST_DATABASE_URL") or os.getenv(
-    "DATABASE_URL"
+# Try all possible sources for DB connection
+ASYNC_TEST_DATABASE_URL = (
+    os.getenv("ASYNC_TEST_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or f"postgresql+asyncpg://{os.getenv('POSTGRES_USER', 'saasuser')}:{os.getenv('POSTGRES_PASSWORD', 'saaspass')}@{os.getenv('POSTGRES_HOST', 'localhost')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB', 'saasdb_test')}"
 )
-SYNC_TEST_DATABASE_URL = os.getenv("SYNC_TEST_DATABASE_URL") or ensure_sync_url(
-    ASYNC_TEST_DATABASE_URL
+SYNC_TEST_DATABASE_URL = (
+    os.getenv("SYNC_TEST_DATABASE_URL")
+    or ensure_sync_url(ASYNC_TEST_DATABASE_URL)
 )
 
 if not ASYNC_TEST_DATABASE_URL:

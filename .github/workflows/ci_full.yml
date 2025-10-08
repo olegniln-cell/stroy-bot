@@ -69,15 +69,6 @@ jobs:
           --health-timeout=5s
           --health-retries=10
 
-    env:
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: saasuser
-      POSTGRES_PASSWORD: saaspass
-      POSTGRES_DB: saasdb_test
-      DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@localhost:5432/saasdb_test
-      SYNC_DATABASE_URL: postgresql+psycopg2://saasuser:saaspass@localhost:5432/saasdb_test
-
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -177,6 +168,13 @@ jobs:
               fi
             done < .env.ci
           fi
+
+      - name: 🔧 Prepare .env for docker-compose
+        run: |
+          echo "🧩 Copying .env.ci → .env (for docker compose)..."
+          cp .env.ci .env
+          echo "✅ .env file prepared:"
+          head -n 10 .env
 
       - name: 🚀 Start test environment (db, redis, minio, test_db)
         run: |
