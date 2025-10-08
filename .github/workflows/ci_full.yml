@@ -86,8 +86,12 @@ jobs:
       - name: 🔧 Prepare test environment
         run: |
           echo "🧩 Preparing .env.test for pytest..."
-          cp .env.ci .env.test
-          sed -i 's/@postgres:5432/@localhost:5432/g' .env.test
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_USER=saasuser
+          export POSTGRES_PASSWORD=saaspass
+          export POSTGRES_DB=saasdb_test
+          envsubst < .env.ci > .env.test
           echo "✅ Final .env.test:"
           cat .env.test
 
@@ -111,7 +115,7 @@ jobs:
       - name: 🧪 Run unit tests
         run: |
           set -o allexport
-          source .env
+          source .env.test
           set +o allexport
           pytest -vv -m "not smoke" \
             --cov=saas_bot \
