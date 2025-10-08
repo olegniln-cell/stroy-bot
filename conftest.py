@@ -40,11 +40,16 @@ def ensure_sync_url(url: str) -> str:
 ASYNC_TEST_DATABASE_URL = (
     os.getenv("ASYNC_TEST_DATABASE_URL")
     or os.getenv("DATABASE_URL")
-    or f"postgresql+asyncpg://{os.getenv('POSTGRES_USER', 'saasuser')}:{os.getenv('POSTGRES_PASSWORD', 'saaspass')}@{os.getenv('POSTGRES_HOST', 'localhost')}:{os.getenv('POSTGRES_PORT', '5432')}/{os.getenv('POSTGRES_DB', 'saasdb_test')}"
+    or "postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}".format(
+        user=os.getenv("POSTGRES_USER", "saasuser"),
+        password=os.getenv("POSTGRES_PASSWORD", "saaspass"),
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        port=os.getenv("POSTGRES_PORT", "5432"),
+        db=os.getenv("POSTGRES_DB", "saasdb_test"),
+    )
 )
-SYNC_TEST_DATABASE_URL = (
-    os.getenv("SYNC_TEST_DATABASE_URL")
-    or ensure_sync_url(ASYNC_TEST_DATABASE_URL)
+SYNC_TEST_DATABASE_URL = os.getenv("SYNC_TEST_DATABASE_URL") or ensure_sync_url(
+    ASYNC_TEST_DATABASE_URL
 )
 
 if not ASYNC_TEST_DATABASE_URL:
