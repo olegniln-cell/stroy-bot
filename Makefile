@@ -529,6 +529,10 @@ com: ## Коммитим изменения (пример: make com m="fix: ci c
 puch: ## Пушим изменения в main
 	git push origin main
 
+p2v: ## Пушим в ветку
+	git push origin ci/unit-tests-fix
+
+
 ydi: ## удалить файл из индекса
 	git rm --cached migrations/versions/имя-файла.py
 ydf: ## удалить файл локально

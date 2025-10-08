@@ -45,6 +45,7 @@ jobs:
           bandit -r . || true
           safety scan || true
 
+
   # -------------------------------
   # 2. Unit Tests (local Postgres)
   # -------------------------------
@@ -61,7 +62,7 @@ jobs:
           POSTGRES_PASSWORD: saaspass
           POSTGRES_DB: saasdb_test
         ports:
-          - 5432:5432                  # <-- важно: пробрасываем порт к runner
+          - 5432:5432
         options: >-
           --health-cmd="pg_isready -U saasuser -d saasdb_test"
           --health-interval=10s
@@ -69,7 +70,7 @@ jobs:
           --health-retries=10
 
     env:
-      POSTGRES_HOST: localhost      # <-- обращаемся к localhost потому что порт проброшен
+      POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
       POSTGRES_USER: saasuser
       POSTGRES_PASSWORD: saaspass
@@ -91,15 +92,18 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install coverage pytest-cov
 
-      - name: 💤 Initial startup delay (cold CI fix)
+      - name: 🔧 Override env for CI
         run: |
-          echo "Sleeping 5s to allow Postgres container to initialize..."
-          sleep 5
+          echo "✅ Forcing CI DB connection to localhost..."
+          echo "POSTGRES_HOST=localhost" >> .env.test
+          echo "DATABASE_URL=postgresql+asyncpg://saasuser:saaspass@localhost:5432/saasdb_test" >> .env.test
+          echo "SYNC_DATABASE_URL=postgresql+psycopg2://saasuser:saaspass@localhost:5432/saasdb_test" >> .env.test
+          cat .env.test
 
-      - name: ⏳ Wait for PostgreSQL (on localhost)
+      - name: 💤 Wait for PostgreSQL
         run: |
           until pg_isready -U saasuser -d saasdb_test -h localhost -p 5432; do
-            echo "⏳ PostgreSQL is not ready yet (localhost:5432)..."
+            echo "⏳ Waiting for PostgreSQL..."
             sleep 2
           done
           echo "✅ PostgreSQL is ready!"
