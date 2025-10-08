@@ -83,12 +83,18 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install coverage pytest-cov
 
-      - name: 🔧 Patch .env.ci for localhost
+      - name: ⚙️ Prepare environment for CI
         run: |
-          echo "🌱 Patching .env.ci for CI environment..."
-          sed -i 's/@postgres:5432/@localhost:5432/g' .env.ci
-          echo "✅ DATABASE_URL after rewrite:"
-          grep DATABASE_URL .env.ci
+          echo "🌱 Preparing .env from .env.ci..."
+          export POSTGRES_HOST=localhost
+          export POSTGRES_PORT=5432
+          export POSTGRES_USER=saasuser
+          export POSTGRES_PASSWORD=saaspass
+          export POSTGRES_DB=saasdb_test
+          # Подставляем значения из env.ci в новый .env
+          envsubst < .env.ci > .env
+          echo "✅ Final .env content:"
+          cat .env
 
       - name: 💤 Wait for PostgreSQL
         run: |
@@ -101,7 +107,7 @@ jobs:
       - name: 🛠 Apply migrations
         run: |
           set -o allexport
-          source .env.ci
+          source .env
           set +o allexport
           echo "🔍 Checking DB connection..."
           psql "$DATABASE_URL" -c "SELECT version();" || echo "⚠️ Cannot connect to DB"
@@ -110,7 +116,7 @@ jobs:
       - name: 🧪 Run unit tests
         run: |
           set -o allexport
-          source .env.ci
+          source .env
           set +o allexport
           pytest -vv -m "not smoke" \
             --cov=saas_bot \
