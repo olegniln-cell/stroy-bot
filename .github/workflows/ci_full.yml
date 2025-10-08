@@ -82,13 +82,13 @@ jobs:
         run: |
           pip install -r requirements.txt -r requirements-dev.txt
           pip install coverage pytest-cov
-
-      - name: ⚙️ Prepare test environment
+      
+      - name: 🔧 Prepare test environment
         run: |
-          echo "🌱 Preparing .env.test for pytest..."
+          echo "🧩 Preparing .env.test for pytest..."
           cp .env.ci .env.test
           sed -i 's/@postgres:5432/@localhost:5432/g' .env.test
-          echo "✅ Final .env.test content:"
+          echo "✅ Final .env.test:"
           cat .env.test
 
       - name: 💤 Wait for PostgreSQL
@@ -98,6 +98,7 @@ jobs:
             sleep 2
           done
           echo "✅ PostgreSQL is ready!"
+
 
       - name: 🛠 Apply migrations
         run: |
