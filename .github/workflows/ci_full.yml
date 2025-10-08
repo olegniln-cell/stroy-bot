@@ -102,7 +102,12 @@ jobs:
           echo "✅ PostgreSQL is ready!"
 
       - name: 🛠 Apply migrations
-        run: alembic upgrade head
+        run: |
+          echo "🌱 Loading env vars for Alembic..."
+          set -o allexport
+          source .env.test
+          set +o allexport
+          alembic upgrade head
 
       - name: 🧪 Run unit tests
         run: |
