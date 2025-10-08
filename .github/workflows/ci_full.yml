@@ -83,12 +83,9 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install coverage pytest-cov
 
-      - name: 🔧 Load env.ci for tests
+      - name: 🔧 Patch .env.ci for localhost
         run: |
-          echo "🌱 Loading .env.ci for CI environment..."
-          set -o allexport
-          source .env.ci
-          set +o allexport
+          echo "🌱 Patching .env.ci for CI environment..."
           sed -i 's/@postgres:5432/@localhost:5432/g' .env.ci
           echo "✅ DATABASE_URL after rewrite:"
           grep DATABASE_URL .env.ci
@@ -103,15 +100,11 @@ jobs:
 
       - name: 🛠 Apply migrations
         run: |
-          echo "🌱 Loading env vars for Alembic..."
           set -o allexport
           source .env.ci
           set +o allexport
-
-          echo "🔍 Проверяем DATABASE_URL..."
-          python -c "import os; print('DB URL:', os.getenv('DATABASE_URL'))"
-
-          echo "🚀 Запускаем миграции Alembic..."
+          echo "🔍 Checking DB connection..."
+          psql "$DATABASE_URL" -c "SELECT version();" || echo "⚠️ Cannot connect to DB"
           alembic upgrade head
 
       - name: 🧪 Run unit tests
