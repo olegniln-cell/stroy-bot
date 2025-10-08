@@ -1,4 +1,5 @@
-# docker-compose.smoke.yml
+version: "3.9"
+
 services:
   db:
     image: postgres:16
@@ -8,13 +9,21 @@ services:
       POSTGRES_DB: smokedb
     ports:
       - 5433:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smokeuser -d smokedb"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   bot:
     build: .
     env_file:
       - .env.smoke
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     command: >
-      bash -c "alembic upgrade head &&
+      bash -c "echo '⏳ Waiting for DB...' &&
+               sleep 5 &&
+               alembic upgrade head &&
                pytest tests/smoke -v --disable-warnings"
