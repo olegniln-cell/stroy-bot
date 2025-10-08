@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: smokeuser
+      POSTGRES_PASSWORD: smokepass
+      POSTGRES_DB: smokedb_test
+    ports:
+      - 5433:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smokeuser -d smokedb_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  bot:
+    build: .
+    env_file:
+      - .env.smoke
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      bash -c "echo '⏳ Waiting for DB...' &&
+               alembic upgrade head &&
+               pytest tests/smoke -v --disable-warnings"
