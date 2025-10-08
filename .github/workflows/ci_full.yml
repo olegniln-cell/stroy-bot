@@ -92,12 +92,14 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install coverage pytest-cov
 
-      - name: 🔧 Override env for CI
+      - name: 🔧 Prepare env file
         run: |
-          echo "✅ Forcing CI DB connection to localhost..."
+          echo "🧩 Preparing .env.test from .env.ci..."
+          cp .env.ci .env.test
           echo "POSTGRES_HOST=localhost" >> .env.test
           echo "DATABASE_URL=postgresql+asyncpg://saasuser:saaspass@localhost:5432/saasdb_test" >> .env.test
-          echo "SYNC_DATABASE_URL=postgresql+psycopg2://saasuser:saaspass@localhost:5432/saasdb_test" >> .env.test
+          echo "SYNC_TEST_DATABASE_URL=postgresql+psycopg2://saasuser:saaspass@localhost:5432/saasdb_test" >> .env.test
+          echo "✅ Final .env.test content:"
           cat .env.test
 
       - name: 💤 Wait for PostgreSQL
