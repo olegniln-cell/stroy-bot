@@ -83,18 +83,13 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install coverage pytest-cov
 
-      - name: ⚙️ Prepare environment for CI
+      - name: ⚙️ Prepare test environment
         run: |
-          echo "🌱 Preparing .env from .env.ci..."
-          export POSTGRES_HOST=localhost
-          export POSTGRES_PORT=5432
-          export POSTGRES_USER=saasuser
-          export POSTGRES_PASSWORD=saaspass
-          export POSTGRES_DB=saasdb_test
-          # Подставляем значения из env.ci в новый .env
-          envsubst < .env.ci > .env
-          echo "✅ Final .env content:"
-          cat .env
+          echo "🌱 Preparing .env.test for pytest..."
+          cp .env.ci .env.test
+          sed -i 's/@postgres:5432/@localhost:5432/g' .env.test
+          echo "✅ Final .env.test content:"
+          cat .env.test
 
       - name: 💤 Wait for PostgreSQL
         run: |

@@ -526,10 +526,15 @@ com: ## Коммитим изменения (пример: make com m="fix: ci c
 	fi
 	git commit -m "$(m)"
 
+
+c2: ## Коммитим в ветку
+	git commit -m "fix(ci): update postgres host for CI tests"
+
+
 puch: ## Пушим изменения в main
 	git push origin main
 
-puch2: ## Пушим в ветку
+p2: ## Пушим в ветку
 	git push origin ci/unit-tests-fix
 
 
