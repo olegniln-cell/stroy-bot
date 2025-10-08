@@ -69,13 +69,13 @@ jobs:
           --health-retries=10
 
     env:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
       POSTGRES_USER: saasuser
       POSTGRES_PASSWORD: saaspass
       POSTGRES_DB: saasdb_test
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@localhost:5432/saasdb_test
-      SYNC_DATABASE_URL: postgresql+psycopg2://saasuser:saaspass@localhost:5432/saasdb_test
+      DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@postgres:5432/saasdb_test
+      SYNC_DATABASE_URL: postgresql+psycopg2://saasuser:saaspass@postgres:5432/saasdb_test
 
     steps:
       - name: 📥 Checkout code
@@ -93,7 +93,7 @@ jobs:
 
       - name: ⏳ Wait for PostgreSQL
         run: |
-          until pg_isready -U saasuser -d saasdb_test -h localhost -p 5432; do
+          until pg_isready -U saasuser -d saasdb_test -h postgres -p 5432; do
             echo "⏳ PostgreSQL is not ready yet..."
             sleep 2
           done
@@ -135,6 +135,8 @@ jobs:
         run: |
           echo "Testing container startup..."
           docker run --rm saasbot:ci python -c "print('✅ Container runs Python OK')"
+
+
 
   # -------------------------------
   # 4. Smoke Tests (compose + built image)
