@@ -83,16 +83,19 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
           pip install coverage pytest-cov
 
-      - name: 🔧 Prepare env file
+      - name: 🔧 Load env.ci for tests
         run: |
-          echo "🧩 Using .env.ci as test environment..."
-          cp .env.ci .env.test
-          echo "✅ Final .env.test content:"
-          cat .env.test
+          echo "🌱 Loading .env.ci for CI environment..."
+          set -o allexport
+          source .env.ci
+          set +o allexport
+          echo "POSTGRES_HOST=localhost" >> .env.ci
+          echo "✅ Final env:"
+          grep POSTGRES_ .env.ci || true
 
       - name: 💤 Wait for PostgreSQL
         run: |
-          until pg_isready -U saasuser -d saasdb_test -h postgres -p 5432; do
+          until pg_isready -U saasuser -d saasdb_test -h localhost -p 5432; do
             echo "⏳ Waiting for PostgreSQL..."
             sleep 2
           done
@@ -100,16 +103,15 @@ jobs:
 
       - name: 🛠 Apply migrations
         run: |
-          echo "🌱 Loading env vars for Alembic..."
           set -o allexport
-          source .env.test
+          source .env.ci
           set +o allexport
           alembic upgrade head
 
       - name: 🧪 Run unit tests
         run: |
           set -o allexport
-          source .env.test
+          source .env.ci
           set +o allexport
           pytest -vv -m "not smoke" \
             --cov=saas_bot \
