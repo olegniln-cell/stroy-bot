@@ -155,6 +155,7 @@ jobs:
   # -------------------------------
   # 4. Smoke Tests (compose + built image)
   # -------------------------------
+
   smoke-tests:
     runs-on: ubuntu-latest
     needs: build-image
@@ -173,8 +174,8 @@ jobs:
         run: rm -f .env
 
       - name: 🔧 Prepare smoke env
-        run: cp .env.smoke .env.smoke # redundant but explicit
-
+        run: cp .env.smoke .env
+        
       - name: 🚀 Run smoke tests (isolated)
         run: |
           docker compose -f docker-compose.smoke.yml \
