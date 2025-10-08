@@ -169,41 +169,22 @@ jobs:
       - name: 🐳 Ensure docker-compose available
         run: docker compose version || docker --version
 
-      - name: ⚙️ Load CI env file
-        run: |
-          if [ -f .env.ci ]; then
-            echo "Loading .env.ci"
-            while read -r line; do
-              if [[ ! "$line" =~ ^# && "$line" =~ = ]]; then
-                echo "$line" >> $GITHUB_ENV
-              fi
-            done < .env.ci
-          fi
+      - name: 🧹 Remove any default .env
+        run: rm -f .env
 
-      - name: 🔧 Prepare .env for docker-compose
-        run: |
-          echo "🧩 Copying .env.ci → .env (for docker compose)..."
-          cp .env.ci .env
-          echo "✅ .env file prepared:"
-          head -n 10 .env
+      - name: 🔧 Prepare smoke env
+        run: cp .env.smoke .env.smoke # redundant but explicit
 
-      - name: 🚀 Start test environment (db, redis, minio, test_db)
+      - name: 🚀 Run smoke tests (isolated)
         run: |
-          docker compose up -d db test_db redis minio
-          sleep 8
-          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          docker compose -f docker-compose.smoke.yml \
+            --env-file .env.smoke \
+            up --abort-on-container-exit --exit-code-from bot
 
-      - name: 🛠 Apply migrations
-        run: docker compose run --rm bot alembic upgrade head
+      - name: 🧹 Cleanup containers
+        if: always()
+        run: docker compose -f docker-compose.smoke.yml down -v --remove-orphans || true
 
-      - name: 🧪 Run smoke tests with reports
-        run: |
-          mkdir -p test-reports
-          docker compose run --rm bot pytest -vv tests/smoke \
-            --log-cli-level=INFO \
-            --junitxml=test-reports/junit.xml \
-            --html=test-reports/report.html \
-            --self-contained-html
 
       - name: 📦 Upload smoke test logs and reports
         if: always()

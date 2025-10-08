@@ -1,3 +1,4 @@
+# docker-compose.smoke.yml
 services:
   db:
     image: postgres:16
@@ -7,6 +8,7 @@ services:
       POSTGRES_DB: smokedb
     ports:
       - 5433:5432
+
   bot:
     build: .
     env_file:
