@@ -5,7 +5,7 @@
 > ⚙️ **Архитектура:** FastAPI + PostgreSQL + Redis + MinIO  
 > 🧪 **Тесты:** pytest + Alembic + Docker Compose  
 > 🧰 **CI/CD:** GitHub Actions с unit + smoke тестами  
-> 🧱 **Деплой:** через Docker image (production-ready)
+> 🧱 **Деплой:** через Docker image (production-readya)
 
 
 Добро пожаловать!  
@@ -177,7 +177,7 @@ flowchart TD
 
 ### 🧭 Схема подключения окружений
 
-# Обновление 
+# Обновление
 
 ```mermaid
 flowchart TD
