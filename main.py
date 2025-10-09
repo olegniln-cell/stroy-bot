@@ -2,7 +2,11 @@
 import os
 import asyncio
 import logging
+import structlog
 from aiogram import Bot, Dispatcher
+from middlewares.context_middleware import ContextMiddleware
+from core.logging_setup import setup_logging
+from middlewares.context_middleware import ContextMiddleware
 from config import BOT_TOKEN, NOTIFY_CHECK_INTERVAL_MIN, DATABASE_URL
 from database import init_db
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +31,8 @@ from handlers.important_stuff import router as important_router
 from handlers import admin_billing
 from handlers import admin
 from handlers import payments
+from handlers import example_handler
+
 
 # middlewares
 from middlewares.db_middleware import DbSessionMiddleware
@@ -50,10 +56,9 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 import hawkcatcher
 
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger(__name__)
+# --- Structlog logging setup ---
+setup_logging()
+logger = structlog.get_logger(__name__)
 
 
 # --- Hawk integration ---
@@ -152,6 +157,12 @@ async def main():
     dp.message.middleware(AuditMiddleware())
     dp.callback_query.middleware(AuditMiddleware())
 
+    dp.update.middleware(ContextMiddleware())
+
+    dp.message.middleware(ContextMiddleware())
+    dp.callback_query.middleware(ContextMiddleware())
+
+
     # routers
     dp.include_router(start_router)
     dp.include_router(help_router)
@@ -169,6 +180,10 @@ async def main():
     dp.include_router(admin_billing.router)
     dp.include_router(payments.router)
     dp.include_router(admin.router)
+
+    # Пример логирования (тестовый хэндлер)
+    dp.include_router(example_handler.router)
+
 
     # фоновый воркер
     asyncio.create_task(billing_notifier(bot, session_pool))

@@ -37,3 +37,4 @@ pytest-asyncio>=0.23
 
 # Мониторинг ошибок аналог Sentry
 hawkcatcher
+structlog>=24.1.0

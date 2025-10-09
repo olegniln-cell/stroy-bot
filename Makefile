@@ -535,10 +535,17 @@ puch: ## Пушим изменения в main
 	git push origin main
 
 p2: ## Пушим в ветку
-	git push origin ci/unit-tests-fix
+	git push origin feature/observability
 
 pvm: ## Переключишься на main
 	git checkout main
+
+civet: ## добавить новую ветку
+	git checkout -b feature/observability
+
+punv: ## пуш новой ветки в гитхаб
+	git push -u origin feature/observability
+
 
 delvet: ## Удалится ненужная ветка (уже влитая)
 	git branch -d ci/unit-tests-fix
