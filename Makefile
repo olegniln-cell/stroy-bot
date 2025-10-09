@@ -33,6 +33,9 @@ upbb: ## пересборка быстрая
 up: ## Запустить все сервисы (бот, БД, Redis, MinIO) в фоне
 	docker-compose up -d
 
+upup: ## Запустить все сервисы (бот, БД, Redis, MinIO) в фоне
+	docker-compose up -d --build bot
+
 up2: ##пересборка и запуск
 	docker-compose up --build bot
 
@@ -627,3 +630,14 @@ dbp: ##
 	docker builder prune -af
 dsd: ## посмотреть, что именно занимает место:
 	docker system df
+
+
+# ===============================
+# 🔹  востановление базы данных
+# ===============================
+
+backup_db: ## создать базу в ручную
+	docker-compose exec backup /backups/backup_db.sh
+
+restore_db: ## откатить базу к нужной версии из файла backups
+	docker-compose exec backup /backups/restore_db.sh /backups/backup_saasdb_20251009192453.sql.gz

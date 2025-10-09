@@ -55,6 +55,7 @@ async def callback_set_role(
     callback: types.CallbackQuery, session: AsyncSession, user: User
 ):
     """Обработка выбора роли"""
+
     raw_role = callback.data.split(":", 1)[1]
     role = role_map.get(raw_role)
 

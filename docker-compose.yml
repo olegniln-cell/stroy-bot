@@ -21,6 +21,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - main_net
 
   # Тестовая база (только для локальных тестов)
   test_db:
@@ -40,9 +42,7 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      default:
-        aliases:
-          - test_postgres
+      - test_net
 
   # Redis
   redis:
@@ -56,6 +56,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - main_net
 
   # MinIO
   minio:
@@ -76,6 +78,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - main_net
 
   # Бот
   bot:
@@ -83,10 +87,13 @@ services:
     container_name: saasbot
     init: true
     restart: unless-stopped
+    ports:
+      - "8080:8080"
     env_file:
       - .env.local
     environment:
       - PYTHONPATH=/app
+      - HAWK_DSN=${HAWK_DSN}
     depends_on:
       db:
         condition: service_healthy
@@ -97,6 +104,8 @@ services:
     command: python main.py
     volumes:
       - ./migrations:/app/migrations
+    networks:
+      - main_net
 
   # Воркер
   worker:
@@ -108,12 +117,15 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app
+      - HAWK_DSN=${HAWK_DSN}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     command: python worker.py
+    networks:
+      - main_net
 
 
   # --- Автоматический бэкап базы данных ---
@@ -135,6 +147,8 @@ services:
     volumes:
       - ./backups:/backups
     entrypoint: ["/bin/sh", "-c", "while true; do /backups/backup_db.sh; sleep ${BACKUP_INTERVAL:-86400}; done"]
+    networks:
+      - main_net
 
   # --- Grafana (дашборды для метрик Prometheus) ---
   grafana:
@@ -150,9 +164,26 @@ services:
       - bot                    # ждём, пока поднимется бот (метрики)
     volumes:
       - ./grafana_data:/var/lib/grafana  # сохраняем настройки локально
+    networks:
+      - main_net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: saasbot_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - main_net
 
 
 volumes:
   postgres_data:
   postgres_test_data:
   minio_data:
+
+networks:
+  main_net:
+  test_net:

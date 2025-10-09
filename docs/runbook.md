@@ -1,37 +1,35 @@
+# Runbook — краткий план действий при инцидентах
 
-### 4. 📘 Runbook (операционный гайд)
+## 1) Бот упал (нет polling / ошибки на старте)
 
-````md
-# 🧭 Runbook — эксплуатация бота
+* Проверить логи: `docker-compose logs bot --tail 200`
+* Если проблема с миграциями: `docker-compose run --rm bot alembic upgrade head`
+* Перезапуск: `docker-compose restart bot` или `docker-compose up -d --no-deps --build bot`
 
-## Проверка статуса
-```bash
-make ps       # список контейнеров
-curl localhost:8080/healthz
-````
+## 2) База данных не отвечает
 
-## Метрики
+* Проверить контейнер: `docker ps` / `docker-compose ps db`
+* Проброс в контейнер: `docker-compose exec db pg_isready -U saasuser -d saasdb`
+* Если нужен restore: `gunzip -c backups/backup_X.sql.gz | psql -h db -U saasuser -d saasdb`
 
-```
-curl localhost:8080/metrics
-```
+## 3) Высокая задержка / рост ошибок
 
-## Бэкап БД
+* Посмотреть метрики: Prometheus UI `http://localhost:9090` или `curl http://bot:8080/metrics`
+* Посмотреть логи: `docker-compose logs --tail 200`
+* Временно отключить воркер/фоновый воркер: `docker-compose stop worker`
 
-```
-docker exec saasbot_backup /backups/backup_db.sh
-```
+## 4) Проверка интеграций error-tracking
 
-## Просмотр логов
+* Сгенерировать тестовую ошибку в коде или выполнить: `docker exec -it saasbot python -c "from core.monitoring.hawk_setup import capture_message; capture_message('test')"`
+* Проверить панель Hawk/Garage или Sentry.
 
-```
-make logs
-```
+## 5) Роли и тестовые данные пропали
 
-## Перезапуск бота
+* Проверить наличие volume postgres: `docker volume ls | grep postgres`
+* Если volume был удалён (например `down -v`) — данные потеряны. Восстановление из `backups/`.
+* Для тестов использовать test_db с tmpfs (в docker-compose уже сконфигурирован).
 
-```
-make down && make up
-```
+## Контакты
 
-```
+* DevOps: @devops
+* Backend lead: @backend

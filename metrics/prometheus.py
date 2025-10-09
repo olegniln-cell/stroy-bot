@@ -1,19 +1,15 @@
-# /metrics/prometheus.py
 import time
 from fastapi import Request, Response
-from prometheus_client import (
-    Counter,
-    Histogram,
-    generate_latest,
-    CONTENT_TYPE_LATEST,
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+
+# Счётчики запросов
+REQUEST_COUNT = Counter("requests_total", "Total requests", ["method", "endpoint"])
+REQUEST_LATENCY = Histogram(
+    "requests_latency_seconds", "Request latency (s)", ["endpoint"]
 )
 
-# Метрики
-REQUEST_COUNT = Counter("requests_total", "Total requests", ["method", "endpoint"])
-REQUEST_LATENCY = Histogram("requests_latency_seconds", "Request latency", ["endpoint"])
 
-
-# Middleware для замера времени и подсчёта запросов
+# Middleware — для FastAPI или aiohttp
 async def metrics_middleware(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
@@ -23,6 +19,6 @@ async def metrics_middleware(request: Request, call_next):
     return response
 
 
-# Endpoint для Prometheus
+# Endpoint /metrics
 async def metrics_endpoint():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
