@@ -19,6 +19,7 @@ def setup_hawk():
     except Exception as e:
         logger.warning(f"⚠️ Hawk initialization failed: {e}")
 
+
 def capture_exception(e: Exception):
     """Отправка исключения в Hawk (новый API)."""
     try:

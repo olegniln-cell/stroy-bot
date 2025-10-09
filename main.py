@@ -4,13 +4,8 @@ import asyncio
 import structlog
 from aiogram import Bot, Dispatcher
 from middlewares.context_middleware import ContextMiddleware
-from prometheus_client import (
-    Counter,
-    Histogram,
-    CollectorRegistry,
-    generate_latest,
-    CONTENT_TYPE_LATEST,
-)
+from prometheus_client import CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
+
 from core.logging_setup import setup_logging
 from config import BOT_TOKEN, NOTIFY_CHECK_INTERVAL_MIN, DATABASE_URL
 from database import init_db
@@ -57,7 +52,6 @@ from services.seed import seed_plans
 # --- Hawk integration ---
 from core.monitoring.hawk_setup import setup_hawk, capture_exception, capture_message
 
-from core.monitoring.hawk_setup import capture_message
 
 # --- Structlog logging setup ---
 setup_logging()
@@ -71,6 +65,7 @@ init_metrics(registry)
 
 # Инициализация Hawk при старте
 setup_hawk()
+
 
 # --- Глобальный перехватчик необработанных ошибок ---
 def handle_uncaught_exception(loop, context):
@@ -112,12 +107,13 @@ async def start_health_server():
     logger.info(f"🩺 Health-check + Metrics запущены на порту {port}")
     logger.info("🟢 Bot ready: healthz OK, metrics OK, polling starting…")
 
+
 async def main():
     # --- Log env info (safe) ---
     db_host = urlparse(DATABASE_URL).hostname
     logger.info("[BOOT] Запуск бота")
-    logger.info("[BOOT] DB host: %s", db_host)
-    logger.info("[BOOT] BOT_TOKEN: %s...", BOT_TOKEN[:6])
+    logger.info("[BOOT] DB host", db_host=db_host)
+    logger.info("[BOOT] BOT_TOKEN (prefix only)", prefix=BOT_TOKEN[:6])
 
     logger.info("[INFO] Инициализация базы данных...")
     session_pool: async_sessionmaker[AsyncSession] = await init_db()
@@ -153,9 +149,6 @@ async def main():
 
     dp.update.middleware(ContextMiddleware())
 
-    dp.message.middleware(ContextMiddleware())
-    dp.callback_query.middleware(ContextMiddleware())
-
     dp.message.middleware(MetricsMiddleware())
     dp.callback_query.middleware(MetricsMiddleware())
 
@@ -182,7 +175,6 @@ async def main():
 
     # фоновый воркер
     asyncio.create_task(billing_notifier(bot, session_pool))
-
 
     capture_message("🧪 Hawk test event: bot startup check")
 
@@ -217,4 +209,10 @@ if __name__ == "__main__":
         return loop
 
     loop = custom_loop()
+
+try:
     loop.run_until_complete(main())
+except KeyboardInterrupt:
+    logger.info("🛑 Bot stopped by user (KeyboardInterrupt)")
+finally:
+    loop.close()

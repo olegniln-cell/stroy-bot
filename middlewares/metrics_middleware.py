@@ -7,11 +7,24 @@ REQUESTS = None
 ERRORS = None
 LATENCY = None
 
+
 def init_metrics(registry: CollectorRegistry):
     global REQUESTS, ERRORS, LATENCY
-    REQUESTS = Counter("bot_requests_total", "Total bot requests handled", ["handler"], registry=registry)
-    ERRORS = Counter("bot_errors_total", "Total bot errors", ["handler"], registry=registry)
-    LATENCY = Histogram("bot_handler_latency_seconds", "Bot handler latency", ["handler"], registry=registry)
+    REQUESTS = Counter(
+        "bot_requests_total",
+        "Total bot requests handled",
+        ["handler"],
+        registry=registry,
+    )
+    ERRORS = Counter(
+        "bot_errors_total", "Total bot errors", ["handler"], registry=registry
+    )
+    LATENCY = Histogram(
+        "bot_handler_latency_seconds",
+        "Bot handler latency",
+        ["handler"],
+        registry=registry,
+    )
 
 
 class MetricsMiddleware:
