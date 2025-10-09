@@ -177,6 +177,70 @@ flowchart TD
 
 ### 🧭 Схема подключения окружений
 
+# Обновление 
+
+```mermaid
+flowchart TD
+    subgraph Dev["🧩 Local Development"]
+        BOT_DEV["bot (FastAPI)"] --> DB_DEV["PostgreSQL (db:5432)"]
+        BOT_DEV --> REDIS["Redis"]
+        BOT_DEV --> MINIO["MinIO (S3)"]
+    end
+
+    subgraph Tests["🧪 Unit / Integration Tests"]
+        PYTEST["pytest"] --> TEST_DB["PostgreSQL (test_db:5432, tmpfs)"]
+        PYTEST --> REDIS
+        PYTEST --> MINIO
+    end
+
+    subgraph CI["⚙️ GitHub Actions CI/CD"]
+        LINT["Lint & Security"] --> UNIT["Unit Tests (localhost DB)"]
+        UNIT --> BUILD["Docker Build"]
+        BUILD --> SMOKE["Smoke Tests (docker-compose.smoke.yml)"]
+    end
+
+    subgraph Smoke["🔥 Smoke Environment"]
+        BOT_SMOKE["bot:latest (Docker image)"] --> DB_SMOKE["PostgreSQL (smokedb_test)"]
+        BOT_SMOKE --> REDIS_SMOKE["Redis (mock)"]
+    end
+
+    CI --> Tests
+    CI --> Smoke
+    CI --> Dev
+```
+
+---
+
+### 🔹 Новое окружение `Smoke`
+
+| Параметр                 | Значение                                                         |
+| ------------------------ | ---------------------------------------------------------------- |
+| **Конфигурация**         | `.env.smoke`                                                     |
+| **Compose-файл**         | `docker-compose.smoke.yml`                                       |
+| **База данных**          | `smokedb_test`                                                   |
+| **Назначение**           | Проверка готового Docker-образа в условиях, близких к продакшену |
+| **Миграции**             | Выполняются перед pytest внутри контейнера                       |
+| **Команда запуска (CI)** |                                                                  |
+
+```bash
+docker compose -f docker-compose.smoke.yml --env-file .env.smoke up --build
+```
+
+---
+
+### ⚙️ Сводка всех окружений
+
+| Тип окружения     | Файл конфигурации | Compose-файл                    | База данных    | Назначение             |
+| ----------------- | ----------------- | ------------------------------- | -------------- | ---------------------- |
+| Local Dev         | `.env`            | `docker-compose.yml`            | `saasdb`       | Разработка             |
+| Local Test        | `.env.test`       | `docker-compose.yml`            | `saasdb_test`  | Unit/Integration       |
+| CI/CD             | `.env.ci`         | `docker-compose.yml`            | `saasdb_test`  | Unit-тесты             |
+| **Smoke (новое)** | `.env.smoke`      | `docker-compose.smoke.yml`      | `smokedb_test` | Проверка Docker-образа |
+| Production        | `.env.production` | `docker-compose.production.yml` | `saasdb`       | Продакшен              |
+
+
+
+
 ```mermaid
 flowchart TD
     subgraph Dev["🧩 Local Development"]

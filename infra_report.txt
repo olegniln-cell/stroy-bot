@@ -1,0 +1,731 @@
+🧭 SaaS Infra Diagnostic — snapshot at 2025-10-09T11:56:22+0300
+==================================================
+
+### Basic system info
+Timestamp: 2025-10-09T11:56:22+0300
+Darwin MacBook-Air-Fino.local 20.6.0 Darwin Kernel Version 20.6.0: Thu Jul  6 22:12:47 PDT 2023; root:xnu-7195.141.49.702.12~1/RELEASE_X86_64 x86_64
+
+--- docker-compose ps ---
+NAME                COMMAND                  SERVICE             STATUS                PORTS
+saasbot             "python main.py"         bot                 running               
+saasbot_backup      "/bin/sh -c 'while t…"   backup              running               5432/tcp
+saasbot_db          "docker-entrypoint.s…"   db                  running (healthy)     0.0.0.0:5432->5432/tcp
+saasbot_grafana     "/run.sh"                grafana             running               0.0.0.0:3000->3000/tcp
+saasbot_minio       "/usr/bin/docker-ent…"   minio               running (unhealthy)   0.0.0.0:9000-9001->9000-9001/tcp
+saasbot_redis       "docker-entrypoint.s…"   redis               running (healthy)     0.0.0.0:6379->6379/tcp
+saasbot_test_db     "docker-entrypoint.s…"   test_db             running (healthy)     0.0.0.0:5433->5432/tcp
+saasbot_worker      "python worker.py"       worker              running               
+
+--- docker system df ---
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          7         6         1.898GB   682.7MB (35%)
+Containers      8         8         2.371MB   0B (0%)
+Local Volumes   6         4         48.58MB   88B (0%)
+Build Cache     54        0         3.222GB   3.222GB
+
+--- docker ps -a ---
+NAMES             IMAGE                    STATUS                      PORTS
+saasbot_grafana   grafana/grafana:11.2.0   Up 41 minutes               0.0.0.0:3000->3000/tcp
+saasbot           saas_bot-bot             Up 41 minutes               
+saasbot_worker    saas_bot-worker          Up 41 minutes               
+saasbot_backup    postgres:15              Up 41 minutes               5432/tcp
+saasbot_minio     minio/minio              Up 41 minutes (unhealthy)   0.0.0.0:9000-9001->9000-9001/tcp
+saasbot_redis     redis:7                  Up 41 minutes (healthy)     0.0.0.0:6379->6379/tcp
+saasbot_test_db   postgres:15              Up 41 minutes (healthy)     0.0.0.0:5433->5432/tcp
+saasbot_db        postgres:15              Up 41 minutes (healthy)     0.0.0.0:5432->5432/tcp
+
+--- docker volume ls ---
+DRIVER    VOLUME NAME
+local     0dc78e4c7b617f9ca5dea890cfa34aa23abbe8492ede47e0dece606b5d7f21a8
+local     6ab42793f288a19d41b79793cfdae78bd42dc740de4c389d663e36135a80d291
+local     21affcb64191644089877367d6492fe634fb7fc98c4a2d6c07f813db0457149e
+local     a97b3e74355c0bf47ca41b19606e1ca36560d9290cd0f72cf118927e9492ece8
+local     saas_bot_minio_data
+local     saas_bot_postgres_data
+
+--- docker volume inspect (compose volumes) ---
+Volume: 0dc78e4c7b617f9ca5dea890cfa34aa23abbe8492ede47e0dece606b5d7f21a8
+[
+    {
+        "CreatedAt": "2025-10-09T08:14:49Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/0dc78e4c7b617f9ca5dea890cfa34aa23abbe8492ede47e0dece606b5d7f21a8/_data",
+        "Name": "0dc78e4c7b617f9ca5dea890cfa34aa23abbe8492ede47e0dece606b5d7f21a8",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+Volume: 6ab42793f288a19d41b79793cfdae78bd42dc740de4c389d663e36135a80d291
+[
+    {
+        "CreatedAt": "2025-10-08T18:50:22Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/6ab42793f288a19d41b79793cfdae78bd42dc740de4c389d663e36135a80d291/_data",
+        "Name": "6ab42793f288a19d41b79793cfdae78bd42dc740de4c389d663e36135a80d291",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+Volume: 21affcb64191644089877367d6492fe634fb7fc98c4a2d6c07f813db0457149e
+[
+    {
+        "CreatedAt": "2025-10-09T08:14:48Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/21affcb64191644089877367d6492fe634fb7fc98c4a2d6c07f813db0457149e/_data",
+        "Name": "21affcb64191644089877367d6492fe634fb7fc98c4a2d6c07f813db0457149e",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+Volume: a97b3e74355c0bf47ca41b19606e1ca36560d9290cd0f72cf118927e9492ece8
+[
+    {
+        "CreatedAt": "2025-10-08T16:40:19Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/a97b3e74355c0bf47ca41b19606e1ca36560d9290cd0f72cf118927e9492ece8/_data",
+        "Name": "a97b3e74355c0bf47ca41b19606e1ca36560d9290cd0f72cf118927e9492ece8",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+Volume: saas_bot_minio_data
+[
+    {
+        "CreatedAt": "2025-10-05T13:24:56Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.project": "saas_bot",
+            "com.docker.compose.version": "2.13.0",
+            "com.docker.compose.volume": "minio_data"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/saas_bot_minio_data/_data",
+        "Name": "saas_bot_minio_data",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+Volume: saas_bot_postgres_data
+[
+    {
+        "CreatedAt": "2025-10-09T08:14:51Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.project": "saas_bot",
+            "com.docker.compose.version": "2.13.0",
+            "com.docker.compose.volume": "postgres_data"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/saas_bot_postgres_data/_data",
+        "Name": "saas_bot_postgres_data",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+--- docker-compose config (if possible) ---
+name: saas_bot
+services:
+  backup:
+    container_name: saasbot_backup
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint:
+    - /bin/sh
+    - -c
+    - while true; do /backups/backup_db.sh; sleep 86400; done
+    environment:
+      ALLOW_MIGRATE_ON_PROD: "false"
+      BACKUP_INTERVAL: "86400"
+      BOT_TOKEN: dummy
+      DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@db:5432/saasdb
+      POSTGRES_DB: saasdb
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: saaspass
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: saasuser
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_BUCKET_NAME: bot-files
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_REGION: us-east-1
+      S3_SECRET_ACCESS_KEY: minioadmin
+      SYNC_DATABASE_URL: postgresql+psycopg2://saasuser:saaspass@db:5432/saasdb
+    image: postgres:15
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+    - type: bind
+      source: /Users/fino/saas_bot/backups
+      target: /backups
+      bind:
+        create_host_path: true
+  bot:
+    build:
+      context: /Users/fino/saas_bot
+      dockerfile: Dockerfile
+    command:
+    - python
+    - main.py
+    container_name: saasbot
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      redis:
+        condition: service_started
+    environment:
+      ALLOW_MIGRATE_ON_PROD: "false"
+      BOT_TOKEN: 8399326242:AAFTGNluWI4fWitNcC37Mfe87MWD6UoeBOw
+      DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@db:5432/saasdb
+      HAWK_TOKEN: eyJpbnRlZ3JhdGlvbklkIjoiYWRmNDI3ZDktZTk0Zi00ZmRjLWFlYzgtMjQ2NWUyNzllNWEyIiwic2VjcmV0IjoiOWYzOWQ2MmUtYjcwNC00ZGEyLTg4YmEtZTc2YjdmNWJhNjEyIn0=
+      POSTGRES_DB: saasdb
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: saaspass
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: saasuser
+      PYTHONPATH: /app
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_BUCKET_NAME: bot-files
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_REGION: us-east-1
+      S3_SECRET_ACCESS_KEY: minioadmin
+      SYNC_DATABASE_URL: postgresql+psycopg2://saasuser:saaspass@db:5432/saasdb
+    init: true
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+    - type: bind
+      source: /Users/fino/saas_bot/migrations
+      target: /app/migrations
+      bind:
+        create_host_path: true
+  db:
+    container_name: saasbot_db
+    environment:
+      ALLOW_MIGRATE_ON_PROD: "false"
+      BOT_TOKEN: dummy
+      DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@db:5432/saasdb
+      POSTGRES_DB: saasdb
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: saaspass
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: saasuser
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_BUCKET_NAME: bot-files
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_REGION: us-east-1
+      S3_SECRET_ACCESS_KEY: minioadmin
+      SYNC_DATABASE_URL: postgresql+psycopg2://saasuser:saaspass@db:5432/saasdb
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U saasuser -d saasdb
+      timeout: 5s
+      interval: 10s
+      retries: 10
+    image: postgres:15
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      target: 5432
+      published: "5432"
+      protocol: tcp
+    restart: unless-stopped
+    volumes:
+    - type: volume
+      source: postgres_data
+      target: /var/lib/postgresql/data
+      volume: {}
+  grafana:
+    container_name: saasbot_grafana
+    depends_on:
+      bot:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+    image: grafana/grafana:11.2.0
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      target: 3000
+      published: "3000"
+      protocol: tcp
+    restart: unless-stopped
+    volumes:
+    - type: bind
+      source: /Users/fino/saas_bot/grafana_data
+      target: /var/lib/grafana
+      bind:
+        create_host_path: true
+  minio:
+    command:
+    - server
+    - /data
+    - --console-address
+    - :9001
+    container_name: saasbot_minio
+    environment:
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: minioadmin
+    healthcheck:
+      test:
+      - CMD
+      - curl
+      - -f
+      - http://minio:9000/minio/health/live || exit 1
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    image: minio/minio
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      target: 9000
+      published: "9000"
+      protocol: tcp
+    - mode: ingress
+      target: 9001
+      published: "9001"
+      protocol: tcp
+    restart: unless-stopped
+    volumes:
+    - type: volume
+      source: minio_data
+      target: /data
+      volume: {}
+  redis:
+    container_name: saasbot_redis
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    image: redis:7
+    networks:
+      default: null
+    ports:
+    - mode: ingress
+      target: 6379
+      published: "6379"
+      protocol: tcp
+    restart: unless-stopped
+  test_db:
+    container_name: saasbot_test_db
+    environment:
+      ASYNC_TEST_DATABASE_URL: postgresql+asyncpg://saasuser:saaspass@test_db:5432/saasdb_test
+
+--- Bot health endpoints ---
+health: http://localhost:8080/healthz
+metrics: http://localhost:8080/metrics
+curl health (3s timeout):
+curl: (7) Failed to connect to localhost port 8080 after 14 ms: Couldn't connect to server
+health curl failed or timed out
+
+curl metrics (first 40 lines):
+curl: (7) Failed to connect to localhost port 8080 after 10 ms: Couldn't connect to server
+metrics curl failed or timed out
+
+--- Recent logs (last 200 lines) ---
+--- logs: bot ---
+saasbot  | 2025-10-09 08:15:19,728 - __main__ - WARNING - ⚠️ Hawk initialization failed: module 'hawkcatcher' has no attribute 'send_event'
+saasbot  | 2025-10-09 08:15:19,729 - __main__ - INFO - [BOOT] Запуск бота
+saasbot  | 2025-10-09 08:15:19,730 - __main__ - INFO - [BOOT] DB host: db
+saasbot  | 2025-10-09 08:15:19,731 - __main__ - INFO - [BOOT] BOT_TOKEN: 839932...
+saasbot  | 2025-10-09 08:15:19,731 - __main__ - INFO - [INFO] Инициализация базы данных...
+saasbot  | 2025-10-09 08:15:19,862 - __main__ - INFO - [INFO] База данных готова
+saasbot  | 2025-10-09 08:15:19,921 - services.seed - INFO - 🔄 Тариф синхронизирован: free | Free | 0$/мес | 30 дней
+saasbot  | 2025-10-09 08:15:19,935 - services.seed - INFO - 🔄 Тариф синхронизирован: pro | Pro | 29$/мес | 30 дней
+saasbot  | 2025-10-09 08:15:19,945 - services.seed - INFO - 🔄 Тариф синхронизирован: enterprise | Enterprise | 199$/мес | 365 дней
+saasbot  | 2025-10-09 08:15:19,948 - services.seed - INFO - ✅ Синхронизация тарифов завершена (созданы/обновлены)
+saasbot  | 2025-10-09 08:15:19,976 - __main__ - INFO - [INFO] Бот запускается...
+saasbot  | 2025-10-09 08:15:19,977 - aiogram.dispatcher - INFO - Start polling
+saasbot  | 2025-10-09 08:15:20,085 - __main__ - INFO - 🩺 Health-check + Metrics запущены на порту 8080
+saasbot  | 2025-10-09 08:15:20,085 - __main__ - INFO - 🟢 Bot ready: healthz OK, metrics OK, polling starting…
+saasbot  | 2025-10-09 08:15:21,013 - aiogram.dispatcher - INFO - Run polling for bot @stroybot_saas_bot id=8399326242 - 'СтройБот SaaS'
+
+--- logs: db ---
+saasbot_db  | 
+saasbot_db  | PostgreSQL Database directory appears to contain a database; Skipping initialization
+saasbot_db  | 
+saasbot_db  | 2025-10-09 08:14:51.346 UTC [1] LOG:  starting PostgreSQL 15.14 (Debian 15.14-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+saasbot_db  | 2025-10-09 08:14:51.352 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+saasbot_db  | 2025-10-09 08:14:51.352 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+saasbot_db  | 2025-10-09 08:14:51.364 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+saasbot_db  | 2025-10-09 08:14:51.405 UTC [29] LOG:  database system was shut down at 2025-10-08 18:50:22 UTC
+saasbot_db  | 2025-10-09 08:14:51.502 UTC [1] LOG:  database system is ready to accept connections
+saasbot_db  | 2025-10-09 08:16:16.881 UTC [93] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:17.196 UTC [94] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:17.256 UTC [95] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:17.365 UTC [96] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:17.623 UTC [97] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:18.129 UTC [98] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:18.197 UTC [99] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:18.449 UTC [100] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:18.570 UTC [101] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:16:18.598 UTC [102] LOG:  invalid length of startup packet
+saasbot_db  | 2025-10-09 08:19:51.316 UTC [27] LOG:  checkpoint starting: time
+saasbot_db  | 2025-10-09 08:19:51.626 UTC [27] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.229 s, sync=0.031 s, total=0.314 s; sync files=4, longest=0.023 s, average=0.008 s; distance=6 kB, estimate=6 kB
+
+--- logs: minio ---
+saasbot_minio  | MinIO Object Storage Server
+saasbot_minio  | Copyright: 2015-2025 MinIO, Inc.
+saasbot_minio  | License: GNU AGPLv3 - https://www.gnu.org/licenses/agpl-3.0.html
+saasbot_minio  | Version: RELEASE.2025-09-07T16-13-09Z (go1.24.6 linux/amd64)
+saasbot_minio  | 
+saasbot_minio  | API: http://172.19.0.5:9000  http://127.0.0.1:9000 
+saasbot_minio  | WebUI: http://172.19.0.5:9001 http://127.0.0.1:9001 
+saasbot_minio  | 
+saasbot_minio  | Docs: https://docs.min.io
+saasbot_minio  | WARN: Detected default credentials 'minioadmin:minioadmin', we recommend that you change these values with 'MINIO_ROOT_USER' and 'MINIO_ROOT_PASSWORD' environment variables
+
+--- logs: redis ---
+saasbot_redis  | 1:C 09 Oct 2025 08:14:51.517 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+saasbot_redis  | 1:C 09 Oct 2025 08:14:51.517 * Redis version=7.4.5, bits=64, commit=00000000, modified=0, pid=1, just started
+saasbot_redis  | 1:C 09 Oct 2025 08:14:51.517 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+saasbot_redis  | 1:M 09 Oct 2025 08:14:51.531 * monotonic clock: POSIX clock_gettime
+saasbot_redis  | 1:M 09 Oct 2025 08:14:51.537 * Running mode=standalone, port=6379.
+saasbot_redis  | 1:M 09 Oct 2025 08:14:51.539 * Server initialized
+saasbot_redis  | 1:M 09 Oct 2025 08:14:51.539 * Ready to accept connections tcp
+saasbot_redis  | 1:M 09 Oct 2025 08:17:10.746 # Possible SECURITY ATTACK detected. It looks like somebody is sending POST or Host: commands to Redis. This is likely due to an attacker attempting to use Cross Protocol Scripting to compromise your Redis instance. Connection from 172.19.0.1:63816 aborted.
+
+--- logs: test_db ---
+saasbot_test_db  | 2025-10-09 08:23:11.804 UTC [512] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:23:22.194 UTC [521] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:23:32.604 UTC [530] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:23:42.847 UTC [538] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:23:53.386 UTC [546] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:24:03.550 UTC [555] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:24:13.681 UTC [564] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:24:23.850 UTC [572] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:24:34.027 UTC [581] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:24:44.163 UTC [589] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:24:54.349 UTC [598] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:25:04.509 UTC [607] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:25:14.719 UTC [615] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:25:24.925 UTC [624] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:25:35.095 UTC [632] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:25:45.235 UTC [640] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:25:55.397 UTC [649] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:26:05.562 UTC [657] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:26:15.755 UTC [665] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:26:25.920 UTC [674] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:26:36.080 UTC [682] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:26:46.233 UTC [690] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:26:56.582 UTC [699] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:27:06.952 UTC [707] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:27:17.349 UTC [715] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:27:27.603 UTC [724] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:27:37.775 UTC [732] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:27:48.001 UTC [740] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:27:58.194 UTC [749] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:28:08.432 UTC [758] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:28:18.674 UTC [766] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:28:28.863 UTC [775] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:28:39.123 UTC [783] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:28:49.355 UTC [791] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:28:59.570 UTC [800] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:29:10.595 UTC [809] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:29:20.992 UTC [817] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:29:31.228 UTC [826] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:29:41.374 UTC [834] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:29:51.544 UTC [842] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:30:01.731 UTC [851] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:30:11.929 UTC [860] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:30:22.313 UTC [869] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:30:32.539 UTC [878] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:30:42.771 UTC [886] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:30:52.978 UTC [894] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:31:03.165 UTC [903] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:31:13.337 UTC [910] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:31:23.520 UTC [919] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:31:33.685 UTC [928] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:31:43.966 UTC [936] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:31:54.348 UTC [945] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:32:04.636 UTC [953] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:32:14.920 UTC [961] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:32:25.094 UTC [971] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:32:35.665 UTC [979] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:32:45.817 UTC [987] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:32:56.055 UTC [996] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:33:06.258 UTC [1004] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:33:16.595 UTC [1012] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:33:26.763 UTC [1020] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:33:36.951 UTC [1028] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:33:47.343 UTC [1036] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:33:57.532 UTC [1045] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:34:07.683 UTC [1053] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:34:17.881 UTC [1061] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:34:28.046 UTC [1070] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:34:38.225 UTC [1079] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:34:48.389 UTC [1087] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:34:58.632 UTC [1096] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:35:08.823 UTC [1104] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:35:19.055 UTC [1112] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:35:29.264 UTC [1121] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:35:39.503 UTC [1129] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:35:49.736 UTC [1137] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:35:59.976 UTC [1146] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:36:10.121 UTC [1154] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:36:20.294 UTC [1162] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:36:30.594 UTC [1170] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:36:40.761 UTC [1178] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:36:50.923 UTC [1186] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:37:01.102 UTC [1195] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:37:11.244 UTC [1202] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:37:21.653 UTC [1210] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:37:31.874 UTC [1219] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:37:42.312 UTC [1227] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:37:52.624 UTC [1234] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:38:02.932 UTC [1242] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:38:13.122 UTC [1250] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:38:23.340 UTC [1258] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:38:33.670 UTC [1267] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:38:43.934 UTC [1275] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:38:54.139 UTC [1282] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:39:04.337 UTC [1291] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:39:14.521 UTC [1300] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:39:22.161 UTC [1307] FATAL:  role "postgres" does not exist
+saasbot_test_db  | 2025-10-09 08:39:24.696 UTC [1315] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:39:34.890 UTC [1324] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:39:45.037 UTC [1331] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:39:55.263 UTC [1340] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:39:59.126 UTC [1347] FATAL:  role "postgres" does not exist
+saasbot_test_db  | 2025-10-09 08:40:05.444 UTC [1355] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:40:15.692 UTC [1362] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:40:25.865 UTC [1371] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:40:36.184 UTC [1379] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:40:46.386 UTC [1387] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:40:56.598 UTC [1396] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:41:06.849 UTC [1404] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:41:17.155 UTC [1412] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:41:27.448 UTC [1421] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:41:37.557 UTC [1430] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:41:47.735 UTC [1438] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:41:57.951 UTC [1447] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:42:08.176 UTC [1455] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:42:18.419 UTC [1463] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:42:28.718 UTC [1473] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:42:38.865 UTC [1481] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:42:49.037 UTC [1488] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:42:59.266 UTC [1497] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:43:09.507 UTC [1505] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:43:19.692 UTC [1514] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:43:29.880 UTC [1523] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:43:40.037 UTC [1531] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:43:50.212 UTC [1539] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:44:00.582 UTC [1548] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:44:10.796 UTC [1556] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:44:21.032 UTC [1564] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:44:31.252 UTC [1573] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:44:41.427 UTC [1581] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:44:51.669 UTC [1589] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:45:01.826 UTC [1598] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:45:11.999 UTC [1606] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:45:22.355 UTC [1614] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:45:32.508 UTC [1622] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:45:42.653 UTC [1630] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:45:52.812 UTC [1639] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:46:02.967 UTC [1648] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:46:13.101 UTC [1655] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:46:23.270 UTC [1663] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:46:33.495 UTC [1673] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:46:43.647 UTC [1681] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:46:53.812 UTC [1689] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:47:04.003 UTC [1698] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:47:14.241 UTC [1706] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:47:24.436 UTC [1714] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:47:35.690 UTC [1722] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:47:45.999 UTC [1730] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:47:56.204 UTC [1739] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:48:06.392 UTC [1747] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:48:16.529 UTC [1755] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:48:26.690 UTC [1764] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:48:36.852 UTC [1773] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:48:47.043 UTC [1780] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:48:57.277 UTC [1789] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:49:07.443 UTC [1797] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:49:17.692 UTC [1805] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:49:27.959 UTC [1814] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:49:38.125 UTC [1822] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:49:48.304 UTC [1830] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:49:58.495 UTC [1839] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:50:08.682 UTC [1847] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:50:18.138 UTC [1854] FATAL:  role "postgres" does not exist
+saasbot_test_db  | 2025-10-09 08:50:18.442 UTC [1861] FATAL:  role "postgres" does not exist
+saasbot_test_db  | 2025-10-09 08:50:18.946 UTC [1869] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:50:29.145 UTC [1879] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:50:39.315 UTC [1888] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:50:49.498 UTC [1896] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:50:59.699 UTC [1905] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:51:09.881 UTC [1913] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:51:20.087 UTC [1921] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:51:30.574 UTC [1930] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:51:40.731 UTC [1938] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:51:50.895 UTC [1946] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:52:01.086 UTC [1956] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:52:11.426 UTC [1964] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:52:21.805 UTC [1972] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:52:32.418 UTC [1980] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:52:42.765 UTC [1988] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:52:53.000 UTC [1996] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:53:03.199 UTC [2005] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:53:13.484 UTC [2013] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:53:23.732 UTC [2021] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:53:33.945 UTC [2030] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:53:44.133 UTC [2038] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:53:54.369 UTC [2046] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:54:04.652 UTC [2055] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:54:14.816 UTC [2063] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:54:24.975 UTC [2071] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:54:35.172 UTC [2081] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:54:45.342 UTC [2089] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:54:55.577 UTC [2098] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:55:05.839 UTC [2107] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:55:15.982 UTC [2115] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:55:26.145 UTC [2124] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:55:36.315 UTC [2133] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:55:46.549 UTC [2141] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:55:56.817 UTC [2150] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:56:07.062 UTC [2158] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:56:17.301 UTC [2166] FATAL:  database "saasdb" does not exist
+saasbot_test_db  | 2025-10-09 08:56:27.682 UTC [2175] FATAL:  database "saasdb" does not exist
+
+--- logs: worker ---
+saasbot_worker  | 2025-10-09 08:15:19,192 [INFO] worker: 🚀 Worker started
+saasbot_worker  | 2025-10-09 08:15:19,499 [INFO] apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+saasbot_worker  | 2025-10-09 08:15:19,502 [INFO] apscheduler.scheduler: Added job "run_jobs" to job store "default"
+saasbot_worker  | 2025-10-09 08:15:19,503 [INFO] apscheduler.scheduler: Scheduler started
+saasbot_worker  | 2025-10-09 08:15:19,504 [ERROR] asyncio: Task exception was never retrieved
+saasbot_worker  | future: <Task finished name='Task-3' coro=<run_jobs() done, defined at /app/worker.py:20> exception=TokenValidationError('Token is invalid!')>
+saasbot_worker  | Traceback (most recent call last):
+saasbot_worker  |   File "/app/worker.py", line 23, in run_jobs
+saasbot_worker  |     bot = Bot(BOT_TOKEN)
+saasbot_worker  |           ^^^^^^^^^^^^^^
+saasbot_worker  |   File "/usr/local/lib/python3.12/site-packages/aiogram/client/bot.py", line 273, in __init__
+saasbot_worker  |     validate_token(token)
+saasbot_worker  |   File "/usr/local/lib/python3.12/site-packages/aiogram/utils/token.py", line 27, in validate_token
+saasbot_worker  |     raise TokenValidationError("Token is invalid!")
+saasbot_worker  | aiogram.utils.token.TokenValidationError: Token is invalid!
+
+--- logs: grafana ---
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.364932796Z level=info msg="Starting Grafana" version=11.2.0 commit=2a88694fd3ced0335bf3726cc5d0adc2d1858855 branch=v11.2.x compiled=2025-10-09T08:15:07Z
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.382245255Z level=info msg="Config loaded from" file=/usr/share/grafana/conf/defaults.ini
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.382514791Z level=info msg="Config loaded from" file=/etc/grafana/grafana.ini
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.382528795Z level=info msg="Config overridden from command line" arg="default.paths.data=/var/lib/grafana"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.382534166Z level=info msg="Config overridden from command line" arg="default.paths.logs=/var/log/grafana"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.382538586Z level=info msg="Config overridden from command line" arg="default.paths.plugins=/var/lib/grafana/plugins"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.382545751Z level=info msg="Config overridden from command line" arg="default.paths.provisioning=/etc/grafana/provisioning"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.382550391Z level=info msg="Config overridden from command line" arg="default.log.mode=console"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383171792Z level=info msg="Config overridden from Environment variable" var="GF_PATHS_DATA=/var/lib/grafana"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383231117Z level=info msg="Config overridden from Environment variable" var="GF_PATHS_LOGS=/var/log/grafana"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383239943Z level=info msg="Config overridden from Environment variable" var="GF_PATHS_PLUGINS=/var/lib/grafana/plugins"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383246978Z level=info msg="Config overridden from Environment variable" var="GF_PATHS_PROVISIONING=/etc/grafana/provisioning"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383254402Z level=info msg="Config overridden from Environment variable" var="GF_SECURITY_ADMIN_USER=admin"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383631026Z level=info msg="Config overridden from Environment variable" var="GF_SECURITY_ADMIN_PASSWORD=*********"
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.38364343Z level=info msg=Target target=[all]
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383659721Z level=info msg="Path Home" path=/usr/share/grafana
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383664893Z level=info msg="Path Data" path=/var/lib/grafana
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383669213Z level=info msg="Path Logs" path=/var/log/grafana
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.383673498Z level=info msg="Path Plugins" path=/var/lib/grafana/plugins
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.384047086Z level=info msg="Path Provisioning" path=/etc/grafana/provisioning
+saasbot_grafana  | logger=settings t=2025-10-09T08:15:07.384057679Z level=info msg="App mode production"
+saasbot_grafana  | logger=featuremgmt t=2025-10-09T08:15:07.385359759Z level=info msg=FeatureToggles ssoSettingsApi=true panelMonitoring=true kubernetesPlaylists=true logsContextDatasourceUi=true awsAsyncQueryCaching=true prometheusDataplane=true tlsMemcached=true publicDashboards=true logsExploreTableVisualisation=true autoMigrateXYChartPanel=true transformationsVariableSupport=true exploreMetrics=true recordedQueriesMulti=true angularDeprecationUI=true prometheusAzureOverrideAudience=true alertingSimplifiedRouting=true lokiQueryHints=true cloudWatchNewLabelParsing=true correlations=true nestedFolders=true topnav=true lokiStructuredMetadata=true logsInfiniteScrolling=true prometheusConfigOverhaulAuth=true prometheusMetricEncyclopedia=true logRowsPopoverMenu=true recoveryThreshold=true cloudWatchRoundUpEndTime=true lokiQuerySplitting=true alertingInsights=true dataplaneFrontendFallback=true transformationsRedesign=true formatString=true alertingNoDataErrorExecution=true dashgpt=true addFieldFromCalculationStatFunctions=true cloudWatchCrossAccountQuerying=true lokiMetricDataplane=true groupToNestedTableTransformation=true influxdbBackendMigration=true annotationPermissionUpdate=true managedPluginsInstall=true
+saasbot_grafana  | logger=sqlstore t=2025-10-09T08:15:07.386400228Z level=info msg="Connecting to DB" dbtype=sqlite3
+saasbot_grafana  | logger=migrator t=2025-10-09T08:15:07.574849573Z level=info msg="Locking database"
+saasbot_grafana  | logger=migrator t=2025-10-09T08:15:07.575105204Z level=info msg="Starting DB migrations"
+saasbot_grafana  | logger=migrator t=2025-10-09T08:15:07.70437496Z level=info msg="migrations completed" performed=0 skipped=594 duration=2.137121ms
+saasbot_grafana  | logger=migrator t=2025-10-09T08:15:07.71070078Z level=info msg="Unlocking database"
+saasbot_grafana  | logger=secrets t=2025-10-09T08:15:07.71637801Z level=info msg="Envelope encryption state" enabled=true currentprovider=secretKey.v1
+saasbot_grafana  | logger=plugin.angulardetectorsprovider.dynamic t=2025-10-09T08:15:08.068181657Z level=info msg="Restored cache from database" duration=8.815436ms
+saasbot_grafana  | logger=plugin.store t=2025-10-09T08:15:08.233759077Z level=info msg="Loading plugins..."
+saasbot_grafana  | logger=plugins.registration t=2025-10-09T08:15:08.60247054Z level=error msg="Could not register plugin" pluginId=xychart error="plugin xychart is already registered"
+saasbot_grafana  | logger=plugins.initialization t=2025-10-09T08:15:08.602559532Z level=error msg="Could not initialize plugin" pluginId=xychart error="plugin xychart is already registered"
+saasbot_grafana  | logger=local.finder t=2025-10-09T08:15:08.603293536Z level=warn msg="Skipping finding plugins as directory does not exist" path=/usr/share/grafana/plugins-bundled
+saasbot_grafana  | logger=plugin.store t=2025-10-09T08:15:08.60335668Z level=info msg="Plugins loaded" count=54 duration=369.599445ms
+saasbot_grafana  | logger=query_data t=2025-10-09T08:15:08.648276643Z level=info msg="Query Service initialization"
+saasbot_grafana  | logger=live.push_http t=2025-10-09T08:15:08.666970918Z level=info msg="Live Push Gateway initialization"
+saasbot_grafana  | logger=ngalert.notifier.alertmanager org=1 t=2025-10-09T08:15:08.726619115Z level=info msg="Applying new configuration to Alertmanager" configHash=d2c56faca6af2a5772ff4253222f7386
+saasbot_grafana  | logger=ngalert.state.manager t=2025-10-09T08:15:08.875728721Z level=info msg="Running in alternative execution of Error/NoData mode"
+saasbot_grafana  | logger=infra.usagestats.collector t=2025-10-09T08:15:08.949569189Z level=info msg="registering usage stat providers" usageStatsProvidersLen=2
+saasbot_grafana  | logger=provisioning.alerting t=2025-10-09T08:15:08.998649758Z level=info msg="starting to provision alerting"
+saasbot_grafana  | logger=provisioning.alerting t=2025-10-09T08:15:08.998738765Z level=info msg="finished to provision alerting"
+saasbot_grafana  | logger=grafanaStorageLogger t=2025-10-09T08:15:09.005262882Z level=info msg="Storage starting"
+saasbot_grafana  | logger=ngalert.state.manager t=2025-10-09T08:15:09.003930704Z level=info msg="Warming state cache for startup"
+saasbot_grafana  | logger=ngalert.multiorg.alertmanager t=2025-10-09T08:15:09.1099019Z level=info msg="Starting MultiOrg Alertmanager"
+saasbot_grafana  | logger=http.server t=2025-10-09T08:15:09.224829457Z level=info msg="HTTP Server Listen" address=[::]:3000 protocol=http subUrl= socket=
+saasbot_grafana  | logger=provisioning.dashboard t=2025-10-09T08:15:10.276772015Z level=info msg="starting to provision dashboards"
+saasbot_grafana  | logger=provisioning.dashboard t=2025-10-09T08:15:10.276930167Z level=info msg="finished to provision dashboards"
+saasbot_grafana  | logger=ngalert.state.manager t=2025-10-09T08:15:10.34601066Z level=info msg="State cache has been initialized" states=0 duration=1.342076952s
+saasbot_grafana  | logger=ngalert.scheduler t=2025-10-09T08:15:10.346685469Z level=info msg="Starting scheduler" tickInterval=10s maxAttempts=1
+saasbot_grafana  | logger=ticker t=2025-10-09T08:15:10.350291344Z level=info msg=starting first_tick=2025-10-09T08:15:20Z
+saasbot_grafana  | logger=plugins.update.checker t=2025-10-09T08:15:11.255217887Z level=info msg="Update check succeeded" duration=2.151971059s
+saasbot_grafana  | logger=grafana.update.checker t=2025-10-09T08:15:11.25985197Z level=info msg="Update check succeeded" duration=2.169058222s
+saasbot_grafana  | logger=grafana-apiserver t=2025-10-09T08:15:12.039068043Z level=info msg="Adding GroupVersion playlist.grafana.app v0alpha1 to ResourceManager"
+saasbot_grafana  | logger=grafana-apiserver t=2025-10-09T08:15:12.040510595Z level=info msg="Adding GroupVersion featuretoggle.grafana.app v0alpha1 to ResourceManager"
+saasbot_grafana  | logger=infra.usagestats t=2025-10-09T08:16:43.153376773Z level=info msg="Usage stats are ready to report"
+saasbot_grafana  | logger=context userId=0 orgId=0 uname= t=2025-10-09T08:16:59.38546931Z level=info msg="Request Completed" method=GET path=/ status=302 remote_addr=172.19.0.1 time_ms=5 duration=5.914275ms size=29 referer= handler=/ status_source=server
+saasbot_grafana  | logger=plugin.angulardetectorsprovider.dynamic t=2025-10-09T08:21:51.327466705Z level=info msg="Patterns update finished" duration=516.166699ms
+saasbot_grafana  | logger=cleanup t=2025-10-09T08:25:09.085429546Z level=info msg="Completed cleanup jobs" duration=283.46368ms
+saasbot_grafana  | logger=plugins.update.checker t=2025-10-09T08:25:11.312005409Z level=info msg="Update check succeeded" duration=360.713837ms
+saasbot_grafana  | logger=cleanup t=2025-10-09T08:35:08.530796234Z level=info msg="Completed cleanup jobs" duration=150.95215ms
+saasbot_grafana  | logger=plugins.update.checker t=2025-10-09T08:35:11.086882395Z level=info msg="Update check succeeded" duration=552.238921ms
+saasbot_grafana  | logger=cleanup t=2025-10-09T08:45:08.019300415Z level=info msg="Completed cleanup jobs" duration=52.137577ms
+saasbot_grafana  | logger=plugins.update.checker t=2025-10-09T08:45:10.567887799Z level=info msg="Update check succeeded" duration=444.63887ms
+saasbot_grafana  | logger=infra.usagestats t=2025-10-09T08:46:42.12251005Z level=info msg="Usage stats are ready to report"
+saasbot_grafana  | logger=cleanup t=2025-10-09T08:55:07.717121866Z level=info msg="Completed cleanup jobs" duration=98.423844ms
+saasbot_grafana  | logger=plugins.update.checker t=2025-10-09T08:55:10.252546177Z level=info msg="Update check succeeded" duration=485.064333ms
+
+--- Backups folder ---
+Backups dir: ./backups
+
+No backups found in ./backups
+
+--- Postgres quick check ---
+Postgres container: saasbot_test_db
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  database "saasuser" does not exist
+psql query failed or DB not ready
+
+--- Hawk (error tracking) diagnostics ---
+Bot container: saasbot_grafana
+BOT env vars (BOT_TOKEN/HAWK_TOKEN) inside container:
+
+checking python hawkcatcher module inside bot container (dir listing / attr list):
+No python or python3 interpreter found in container saasbot_grafana
+
+
+--- Disk usage (host) ---
+Filesystem       Size   Used  Avail Capacity iused      ifree %iused  Mounted on
+/dev/disk1s1s1  113Gi   14Gi   40Gi    27%  553830 1182288650    0%   /
+devfs           189Ki  189Ki    0Bi   100%     654          0  100%   /dev
+/dev/disk1s4    113Gi  4.0Gi   40Gi    10%       5 1182842475    0%   /System/Volumes/VM
+/dev/disk1s2    113Gi  271Mi   40Gi     1%     758 1182841722    0%   /System/Volumes/Preboot
+/dev/disk1s6    113Gi  2.0Mi   40Gi     1%      16 1182842464    0%   /System/Volumes/Update
+/dev/disk1s5    113Gi   53Gi   40Gi    57%  504022 1182338458    0%   /System/Volumes/Data
+map auto_home     0Bi    0Bi    0Bi   100%       0          0  100%   /System/Volumes/Data/home
+
+--- Summary Suggestions ---
+Check the following in order if any statuses are not healthy:
+1) MinIO marked unhealthy -> check free disk on host & MinIO volume.
+2) If Postgres errors like 'No space left' -> investigate docker volume saas_bot_postgres_data and free host disk.
+3) Hawk send_event missing -> check hawkcatcher version inside bot image; run 'docker exec -it <bot> python -c "import hawkcatcher; print(dir(hawkcatcher))"' and inspect requirements.txt
+4) Backups: ensure backup script exists in /backups inside backup container and that host mounted backups folder is writable.
+
+

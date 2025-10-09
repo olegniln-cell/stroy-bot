@@ -537,6 +537,12 @@ puch: ## Пушим изменения в main
 p2: ## Пушим в ветку
 	git push origin ci/unit-tests-fix
 
+pvm: ## Переключишься на main
+	git checkout main
+
+delvet: ## Удалится ненужная ветка (уже влитая)
+	git branch -d ci/unit-tests-fix
+
 
 ydi: ## удалить файл из индекса
 	git rm --cached migrations/versions/имя-файла.py
@@ -582,3 +588,35 @@ dct: ##     только запуск контейнера для тестов
 
 pcon: ##   проверка поднялся ли
 	docker compose ps
+
+
+
+
+# ===============================
+# 🔹 Чтобы безопасно чистить docker-мусор
+# ===============================
+
+
+clean-docker: ## безопасная очистка docker
+	@echo "🧹 Cleaning up unused Docker resources (safe mode)..."
+	@docker system prune -f
+	@docker volume prune -f --filter "label=temporary=true" || true
+	@echo "✅ Docker cleanup complete."
+
+
+clean-docker-hard: ## если хочешь ПОЛНУЮ очистку (с подтверждением)
+	@echo "⚠️ WARNING: This will remove ALL images, volumes, and caches!"
+	@read -p "Type 'yes' to continue: " confirm && [ "$$confirm" = "yes" ] && docker system prune -a --volumes
+
+# ===============================
+# 🔹 Чтобы Docker не “жрал” 20–30 ГБ диска, делай периодическую чистку:
+# ===============================
+
+dsp: ##
+	docker system prune -af
+dvp: ##
+	docker volume prune -f
+dbp: ##
+	docker builder prune -af
+dsd: ## посмотреть, что именно занимает место:
+	docker system df
