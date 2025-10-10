@@ -540,7 +540,7 @@ checkv: ##   поменять ветку
 
 
 # ===============================
-# 🔹  CI
+# 🔹  CI пушим
 # ===============================
 
 stat: ## Проверяем статус git
@@ -562,14 +562,37 @@ c2: ## Коммитим в ветку
 	git commit -m "fix(ci): update postgres host for CI tests"
 
 
+# ===============================
+# 🔹  CI пушим из ветки в маин
+# ===============================
+
+pvm: ## Переключишься на main
+	git checkout main
+
+puchvmain: ## подтягивает последние изменение в майин
+	git pull origin main
+
+logspr: ## проверить последний лог
+	git log --oneline -5
+
+delvet: ## Удаляем ненужную ветку локально
+	git branch -d feature/observability
+
+delvet2: ## Удаляем ненужную ветку локально принудительно
+	git branch -D feature/observability
+
+delvgit: ## Удаляем ветку на GitHub (удалённую)
+	git push origin --delete feature/observability
+
+
+
+
 puch: ## Пушим изменения в main
 	git push origin main
 
 p2: ## Пушим в ветку
 	git push origin feature/observability
 
-pvm: ## Переключишься на main
-	git checkout main
 
 civet: ## добавить новую ветку
 	git checkout -b feature/observability
