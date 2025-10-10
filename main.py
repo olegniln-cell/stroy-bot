@@ -230,6 +230,7 @@ finally:
     # 🧩 Завершаем Hawk, чтобы не было "Task was destroyed but it is pending!"
     try:
         from core.monitoring.hawk_setup import close_hawk
+
         asyncio.run(close_hawk())
     except Exception as e:
         logger.warning(f"⚠️ Failed to close Hawk cleanly: {e}")
