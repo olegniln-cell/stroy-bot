@@ -561,6 +561,14 @@ com: ## Коммитим изменения (пример: make com m="fix: ci c
 c2: ## Коммитим в ветку
 	git commit -m "fix(ci): update postgres host for CI tests"
 
+puch: ## Пушим изменения в main
+	git push origin main
+
+p2: ## Пушим в ветку
+	git push origin feature/observability
+
+
+
 
 # ===============================
 # 🔹  CI пушим из ветки в маин
@@ -586,13 +594,12 @@ delvgit: ## Удаляем ветку на GitHub (удалённую)
 
 
 
+# ===============================
+# 🔹  создать новую ветку
+# ===============================
 
-puch: ## Пушим изменения в main
-	git push origin main
-
-p2: ## Пушим в ветку
-	git push origin feature/observability
-
+remgit: ## проверка какой сейчас - переключение между репозиториями
+	git remote -v
 
 civet: ## добавить новую ветку
 	git checkout -b feature/observability
@@ -611,17 +618,9 @@ ydf: ## удалить файл локально
 	rm migrations/versions/имя-файла.py
 
 
-testbazaud: ## удаление базы тестовой и таблиц и создание новой
-	docker exec -it saasbot_test_db psql -U saasuser -d saasdb_test -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-
-migrvtbaz: ## применение миграции в тестовой
-	docker-compose run --rm bot alembic upgrade head
-
-remgit: ## проверка какой сейчас - переключение между репозиториями
-	git remote -v
-
-remgit2: ##  включение другого
-	git remote set-url origin https://github.com/sagrador/saasboot.git
+# ===============================
+# 🔹  отладка перед пушем
+# ===============================
 
 
 .PHONY: format lint
@@ -635,6 +634,21 @@ lint:
 	ruff check .
 	black --check .
 	flake8 .
+
+
+
+
+testbazaud: ## удаление базы тестовой и таблиц и создание новой
+	docker exec -it saasbot_test_db psql -U saasuser -d saasdb_test -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+
+migrvtbaz: ## применение миграции в тестовой
+	docker-compose run --rm bot alembic upgrade head
+
+
+remgit2: ##  включение другого
+	git remote set-url origin https://github.com/sagrador/saasboot.git
+
+
 
 
 # ===============================
