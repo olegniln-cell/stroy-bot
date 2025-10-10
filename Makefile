@@ -601,16 +601,18 @@ delvgit: ## Удаляем ветку на GitHub (удалённую)
 remgit: ## проверка какой сейчас - переключение между репозиториями
 	git remote -v
 
-civet: ## добавить новую ветку
-	git checkout -b feature/observability
+# Убедись, что ты на последней версии main
+	# git checkout main
+	# git pull origin main
 
-punv: ## пуш новой ветки в гитхаб
-	git push -u origin feature/observability
+newvet1: ## Создай и сразу переключись на новую ветку
+	git checkout -b feature/phase4-observability
+
+punv: ## Зафиксировать ветку на GitHub пуш новой ветки в гитхаб
+	git push -u origin feature/phase4-observability
 
 
-delvet: ## Удалится ненужная ветка (уже влитая)
-	git branch -d ci/unit-tests-fix
-
+# дополнительно
 
 ydi: ## удалить файл из индекса
 	git rm --cached migrations/versions/имя-файла.py
