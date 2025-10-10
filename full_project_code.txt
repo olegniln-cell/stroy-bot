@@ -4,8 +4,12 @@
 # -*- coding: utf-8 -*-
 import os
 import asyncio
-import logging
+import structlog
 from aiogram import Bot, Dispatcher
+from middlewares.context_middleware import ContextMiddleware
+from prometheus_client import CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
+
+from core.logging_setup import setup_logging
 from config import BOT_TOKEN, NOTIFY_CHECK_INTERVAL_MIN, DATABASE_URL
 from database import init_db
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +34,7 @@ from handlers.important_stuff import router as important_router
 from handlers import admin_billing
 from handlers import admin
 from handlers import payments
+from handlers import example_handler
 
 # middlewares
 from middlewares.db_middleware import DbSessionMiddleware
@@ -37,6 +42,7 @@ from middlewares.role_checker import RoleCheckerMiddleware
 from middlewares.company_middleware import CompanyMiddleware
 from middlewares.subscription_checker import SubscriptionCheckerMiddleware
 from middlewares.audit_middleware import AuditMiddleware
+from middlewares.metrics_middleware import MetricsMiddleware, init_metrics
 
 # jobs
 from services.notify_jobs import (
@@ -46,34 +52,71 @@ from services.notify_jobs import (
 )
 from services.seed import seed_plans
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger(__name__)
+# --- Hawk integration ---
+from core.monitoring.hawk_setup import setup_hawk, capture_exception, capture_message
+
+
+# --- Structlog logging setup ---
+setup_logging()
+logger = structlog.get_logger(__name__)
+
+# создаём отдельный реестр, чтобы избежать дубликатов
+registry = CollectorRegistry()
+
+# инициализируем метрики
+init_metrics(registry)
+
+# Инициализация Hawk при старте
+setup_hawk()
+
+
+# --- Глобальный перехватчик необработанных ошибок ---
+def handle_uncaught_exception(loop, context):
+    msg = context.get("exception") or context.get("message")
+    logger.error(f"🔥 Uncaught exception: {msg}")
+
+    try:
+        if context.get("exception"):
+            capture_exception(context.get("exception"))
+        else:
+            capture_message(str(msg))
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to report error to Hawk: {e}")
 
 
 # --- Health-check server ---
 async def start_health_server():
-    async def handle(request):
+    async def handle_health(request):
         return web.Response(text="OK", status=200)
 
+    async def handle_metrics(request):
+        try:
+            data = generate_latest(registry)
+            return web.Response(body=data, content_type=CONTENT_TYPE_LATEST)
+        except Exception as e:
+            logger.exception("metrics endpoint error", error=str(e))
+            return web.Response(status=500, text=f"metrics error: {e}")
+
     app = web.Application()
-    app.router.add_get("/healthz", handle)
+    app.router.add_get("/healthz", handle_health)
+    app.router.add_get("/metrics", handle_metrics)
 
     runner = web.AppRunner(app)
     await runner.setup()
     port = int(os.getenv("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
-    logger.info("🩺 Health-check endpoint запущен на http://0.0.0.0:%s/healthz", port)
+
+    logger.info(f"🩺 Health-check + Metrics запущены на порту {port}")
+    logger.info("🟢 Bot ready: healthz OK, metrics OK, polling starting…")
 
 
 async def main():
     # --- Log env info (safe) ---
     db_host = urlparse(DATABASE_URL).hostname
     logger.info("[BOOT] Запуск бота")
-    logger.info("[BOOT] DB host: %s", db_host)
-    logger.info("[BOOT] BOT_TOKEN: %s...", BOT_TOKEN[:6])
+    logger.info("[BOOT] DB host", db_host=db_host)
+    logger.info("[BOOT] BOT_TOKEN (prefix only)", prefix=BOT_TOKEN[:6])
 
     logger.info("[INFO] Инициализация базы данных...")
     session_pool: async_sessionmaker[AsyncSession] = await init_db()
@@ -107,6 +150,11 @@ async def main():
     dp.message.middleware(AuditMiddleware())
     dp.callback_query.middleware(AuditMiddleware())
 
+    dp.update.middleware(ContextMiddleware())
+
+    dp.message.middleware(MetricsMiddleware())
+    dp.callback_query.middleware(MetricsMiddleware())
+
     # routers
     dp.include_router(start_router)
     dp.include_router(help_router)
@@ -125,8 +173,13 @@ async def main():
     dp.include_router(payments.router)
     dp.include_router(admin.router)
 
+    # Пример логирования (тестовый хэндлер)
+    dp.include_router(example_handler.router)
+
     # фоновый воркер
     asyncio.create_task(billing_notifier(bot, session_pool))
+
+    capture_message("🧪 Hawk test event: bot startup check")
 
     logger.info("[INFO] Бот запускается...")
     try:
@@ -151,7 +204,21 @@ async def billing_notifier(bot: Bot, session_pool: async_sessionmaker[AsyncSessi
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+
+    def custom_loop():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.set_exception_handler(handle_uncaught_exception)
+        return loop
+
+    loop = custom_loop()
+
+try:
+    loop.run_until_complete(main())
+except KeyboardInterrupt:
+    logger.info("🛑 Bot stopped by user (KeyboardInterrupt)")
+finally:
+    loop.close()
 
 
 # --- File: middlewares/role_checker.py ---
@@ -210,19 +277,46 @@ class RoleCheckerMiddleware(BaseMiddleware):
 
 # --- File: middlewares/db_middleware.py ---
 
+# middlewares/db_middleware.py
 from aiogram import BaseMiddleware
 from typing import Callable, Dict, Any
+import time
+import structlog
+from prometheus_client import Counter, Histogram
+
+logger = structlog.get_logger()
+
+DB_REQUESTS_TOTAL = Counter("db_requests_total", "Total DB session usages", ["status"])
+DB_REQUEST_DURATION = Histogram(
+    "db_request_duration_seconds", "DB session duration in seconds", ["status"]
+)
 
 
 class DbSessionMiddleware(BaseMiddleware):
+    """Best-practice: чистая работа с БД + метрики, без зависимости от Hawk."""
+
     def __init__(self, session_pool):
         super().__init__()
         self.session_pool = session_pool
 
     async def __call__(self, handler: Callable, event, data: Dict[str, Any]) -> Any:
-        async with self.session_pool() as session:
-            data["session"] = session  # теперь каждая команда получает сессию
-            return await handler(event, data)
+        start = time.monotonic()
+        status = "ok"
+        try:
+            async with self.session_pool() as session:
+                data["session"] = session
+                result = await handler(event, data)
+                return result
+        except Exception:
+            status = "error"
+            raise
+        finally:
+            duration = time.monotonic() - start
+            DB_REQUESTS_TOTAL.labels(status=status).inc()
+            DB_REQUEST_DURATION.labels(status=status).observe(duration)
+            logger.info(
+                "DB session finished", duration=f"{duration:.3f}s", status=status
+            )
 
 
 # --- File: middlewares/company_middleware.py ---
@@ -400,6 +494,7 @@ async def callback_set_role(
     callback: types.CallbackQuery, session: AsyncSession, user: User
 ):
     """Обработка выбора роли"""
+
     raw_role = callback.data.split(":", 1)[1]
     role = role_map.get(raw_role)
 
@@ -3989,6 +4084,11 @@ def get_url():
     )
 
 
+test_url = os.getenv("SYNC_TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
+if test_url:
+    config.set_main_option("sqlalchemy.url", test_url)
+
+
 # ==============================================================================
 # Удаленный старый код с логированием
 # logger = logging.getLogger(__name__)
@@ -4761,6 +4861,34 @@ async def test_files_flow(session):
     assert f2.original_name == "test.txt"
 
 
+# --- File: metrics/prometheus.py ---
+
+import time
+from fastapi import Request, Response
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+
+# Счётчики запросов
+REQUEST_COUNT = Counter("requests_total", "Total requests", ["method", "endpoint"])
+REQUEST_LATENCY = Histogram(
+    "requests_latency_seconds", "Request latency (s)", ["endpoint"]
+)
+
+
+# Middleware — для FastAPI или aiohttp
+async def metrics_middleware(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+    REQUEST_COUNT.labels(request.method, request.url.path).inc()
+    REQUEST_LATENCY.labels(request.url.path).observe(duration)
+    return response
+
+
+# Endpoint /metrics
+async def metrics_endpoint():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 # --- File: __init__.py ---
 
 # Оставьте этот файл пустым. Никаких импортов!
@@ -4833,63 +4961,78 @@ from alembic import command
 from models.base import Base
 from dotenv import load_dotenv
 
-print("=== PYTEST_CURRENT_TEST:", os.getenv("PYTEST_CURRENT_TEST"))
-
-
-# ----------------------
-# 🔹 Этап 2. Подгружаем .env или .env.test
-# ----------------------
-if any("pytest" in arg for arg in os.sys.argv):
-    load_dotenv(".env.test")
-    print("✅ Loaded .env.test (detected pytest via argv)")
-else:
-    load_dotenv(".env")
-    print("✅ Loaded .env (default)")
-
-# 🚨 Safety check: запрещаем тесты против прод/дев базы
-db_url = os.getenv("ASYNC_TEST_DATABASE_URL") or os.getenv("DATABASE_URL") or ""
-if "test" not in db_url:
-    raise RuntimeError(f"❌ Refusing to run tests against non-test database: {db_url}")
-
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def ensure_sync_url(url: str) -> str:
-    if "+asyncpg" in url:
-        return url.replace("+asyncpg", "+psycopg2")
-    return url
-
-
-ASYNC_TEST_DATABASE_URL = (
-    os.getenv("ASYNC_TEST_DATABASE_URL")
-    or os.getenv("TEST_DATABASE_URL")
-    or os.getenv("DATABASE_URL")
-)
-if not ASYNC_TEST_DATABASE_URL:
-    raise RuntimeError("❌ No test database URL set")
-
-SYNC_TEST_DATABASE_URL = ensure_sync_url(ASYNC_TEST_DATABASE_URL)
-
-# Добавляем логирование URL
-logger.info(f"[pytest.conftest] ASYNC_TEST_DATABASE_URL: {ASYNC_TEST_DATABASE_URL}")
-logger.info(f"[pytest.conftest] SYNC_TEST_DATABASE_URL: {SYNC_TEST_DATABASE_URL}")
+# ----------------------
+# 🔹 Load environment for tests
+# ----------------------
+ENV_TEST_PATH = ".env.test"
+if os.path.exists(ENV_TEST_PATH):
+    load_dotenv(ENV_TEST_PATH, override=True)
+    print(f"✅ Loaded {ENV_TEST_PATH}")
+else:
+    load_dotenv(".env", override=False)
+    print("⚠️ .env.test not found — loaded default .env (not recommended for tests)")
 
 
 # ----------------------
-# 🔹 Фикстура для smoke / flow тестов
+# 🔹 Build URLs and enforce test safety
+# ----------------------
+def ensure_sync_url(url: str) -> str:
+    if not url:
+        return ""
+    return url.replace("+asyncpg", "+psycopg2") if "+asyncpg" in url else url
+
+
+# Try all possible sources for DB connection
+ASYNC_TEST_DATABASE_URL = (
+    os.getenv("ASYNC_TEST_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or "postgresql+asyncpg://{user}:{password}@{host}:{port}/{db}".format(
+        user=os.getenv("POSTGRES_USER", "saasuser"),
+        password=os.getenv("POSTGRES_PASSWORD", "saaspass"),
+        host=os.getenv("POSTGRES_HOST", "localhost"),
+        port=os.getenv("POSTGRES_PORT", "5432"),
+        db=os.getenv("POSTGRES_DB", "saasdb_test"),
+    )
+)
+SYNC_TEST_DATABASE_URL = os.getenv("SYNC_TEST_DATABASE_URL") or ensure_sync_url(
+    ASYNC_TEST_DATABASE_URL
+)
+
+if not ASYNC_TEST_DATABASE_URL:
+    raise RuntimeError(
+        "❌ ASYNC_TEST_DATABASE_URL not set — check .env.test or env_file"
+    )
+
+# Force DATABASE_URL to point to test DB
+os.environ["DATABASE_URL"] = ASYNC_TEST_DATABASE_URL
+os.environ["SYNC_TEST_DATABASE_URL"] = SYNC_TEST_DATABASE_URL
+
+# Safety guard
+if "test" not in (ASYNC_TEST_DATABASE_URL or ""):
+    raise RuntimeError(
+        f"❌ Refusing to run tests against non-test database!\nDATABASE_URL={ASYNC_TEST_DATABASE_URL}"
+    )
+
+logger.info(f"[pytest.conftest] ASYNC_TEST_DATABASE_URL={ASYNC_TEST_DATABASE_URL}")
+logger.info(f"[pytest.conftest] SYNC_TEST_DATABASE_URL={SYNC_TEST_DATABASE_URL}")
+
+
+# ----------------------
+# 🔹 Apply migrations (once per session)
 # ----------------------
 @pytest.fixture(scope="session", autouse=True)
 def apply_migrations():
-    """Запускаем миграции один раз за сессию (только для smoke-тестов)."""
+    """Run migrations once for smoke/flow tests."""
     if os.getenv("USE_MIGRATIONS", "true").lower() != "true":
         return
 
-    reset_db = os.getenv("RESET_DB", "true").lower() == "true"
     logger.info("🚀 Applying migrations...")
     sync_engine = create_engine(SYNC_TEST_DATABASE_URL)
 
+    reset_db = os.getenv("RESET_DB", "true").lower() == "true"
     if reset_db:
         with sync_engine.begin() as conn:
             conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
@@ -4903,7 +5046,7 @@ def apply_migrations():
 
 
 # ----------------------
-# 🔹 Async engine + session (для smoke/flow тестов)
+# 🔹 Async test session
 # ----------------------
 @pytest_asyncio.fixture(scope="function")
 async def engine(apply_migrations):
@@ -4912,40 +5055,33 @@ async def engine(apply_migrations):
     await async_engine.dispose()
 
 
-#  Сессия для каждого теста
 @pytest_asyncio.fixture(scope="function")
 async def session(engine):
     async_session = sessionmaker(
-        engine,
-        expire_on_commit=False,
-        class_=AsyncSession,
-        future=True,
+        engine, expire_on_commit=False, class_=AsyncSession, future=True
     )
     async with async_session() as s:
         yield s
 
 
 # ----------------------
-# 🔹 Sync session (для каскадов и аудита — без миграций и сидов)
+# 🔹 Sync session (for cascade/unit tests)
 # ----------------------
 @pytest.fixture(scope="function")
 def db_session():
-    """Чистая база и сессия на каждый юнит-тест моделей (каскады, аудит)."""
-    sync_url = ensure_sync_url(ASYNC_TEST_DATABASE_URL)
-    engine = create_engine(sync_url)
-    Session = sessionmaker(bind=engine)
+    sync_engine = create_engine(SYNC_TEST_DATABASE_URL)
+    Session = sessionmaker(bind=sync_engine)
     session = Session()
 
-    # 💥 Чистим схему перед каждым тестом
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.drop_all(bind=sync_engine)
+    Base.metadata.create_all(bind=sync_engine)
 
     try:
         yield session
     finally:
         session.rollback()
         session.close()
-        engine.dispose()
+        sync_engine.dispose()
 
 
 # --- File: check_connection.py ---

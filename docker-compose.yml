@@ -181,6 +181,7 @@ services:
 
 volumes:
   postgres_data:
+    name: saas_bot_postgres_data  # фиксируем имя, чтобы Docker всегда использовал один и тот же volume
   postgres_test_data:
   minio_data:
 

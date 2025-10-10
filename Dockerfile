@@ -9,7 +9,11 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
 # копируем весь код
 COPY . .
 
+# даём права на запуск entrypoint.sh
+RUN chmod +x backups/entrypoint.sh
+
 # для красивых логов
 ENV PYTHONUNBUFFERED=1
 
+ENTRYPOINT ["./backups/entrypoint.sh"]
 CMD ["python", "main.py"]

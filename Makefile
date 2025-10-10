@@ -10,6 +10,9 @@
         seed ch_seed check-fk check_models tenum \
         test
 
+POSTGRES_VOLUME = saas_bot_postgres_data
+
+
 # ===============================
 # 🔹 Основная помощь
 # ===============================
@@ -20,18 +23,35 @@ help:
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 
+safe-down-v: ## Остановить и удалить ВСЕ контейнеры и данные (с подтверждением)
+	@read -p "⚠️ Это удалит volume с PostgreSQL. Продолжить? (yes/no): " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		docker-compose down -v; \
+	else \
+		echo "❌ Отменено."; \
+	fi
+
+
 
 
 # ===============================
 # 🔹 Управление сервисами
 # ===============================
 
+check-volume:
+	@if docker volume inspect $(POSTGRES_VOLUME) >/dev/null 2>&1; then \
+		echo "✅ Volume $(POSTGRES_VOLUME) найден — данные сохранены."; \
+	else \
+		echo "⚠️ ВНИМАНИЕ: Volume $(POSTGRES_VOLUME) не найден — база создастся заново!"; \
+	fi
+
+
+up: check-volume ## Запустить все сервисы (бот, БД, Redis, MinIO) в фоне
+	docker-compose up -d
+
 
 upbb: ## пересборка быстрая
 	docker compose build bot
-
-up: ## Запустить все сервисы (бот, БД, Redis, MinIO) в фоне
-	docker-compose up -d
 
 upup: ## Запустить все сервисы (бот, БД, Redis, MinIO) в фоне
 	docker-compose up -d --build bot
@@ -153,11 +173,19 @@ reset1: ## Полный сброс окружения: удалить конте
 	docker-compose run --rm bot alembic -x db_url=postgresql+psycopg2://saasuser:saaspass@saasbot_test_db:5432/saasdb_test upgrade head
 
 
-reset: ## Полный сброс окружения: удалить контейнеры и тома, заново применить миграции
-	docker-compose down -v
+
+reset:
+	@echo "🔍 Проверка volume перед сбросом..."
+	@if ! docker volume inspect saas_bot_postgres_data >/dev/null 2>&1; then \
+		echo "⚠️ Volume saas_bot_postgres_data не найден — создаём заново..."; \
+	fi
+	docker-compose down
 	docker-compose up -d db
 	sleep 5
 	docker-compose run --rm bot alembic upgrade head
+
+
+
 
 fresh: ## Запустить с нуля (сборка, миграции, запуск bot и worker)
 	docker-compose down -v

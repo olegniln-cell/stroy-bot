@@ -89,7 +89,9 @@ async def start_health_server():
     async def handle_metrics(request):
         try:
             data = generate_latest(registry)
-            return web.Response(body=data, content_type=CONTENT_TYPE_LATEST)
+            # aiohttp >= 3.9 не принимает charset в content_type
+            safe_content_type = CONTENT_TYPE_LATEST.split(";")[0]
+            return web.Response(body=data, content_type=safe_content_type)
         except Exception as e:
             logger.exception("metrics endpoint error", error=str(e))
             return web.Response(status=500, text=f"metrics error: {e}")
@@ -175,8 +177,6 @@ async def main():
 
     # фоновый воркер
     asyncio.create_task(billing_notifier(bot, session_pool))
-
-    capture_message("🧪 Hawk test event: bot startup check")
 
     logger.info("[INFO] Бот запускается...")
     try:
