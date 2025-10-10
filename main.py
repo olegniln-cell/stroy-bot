@@ -179,10 +179,22 @@ async def main():
     asyncio.create_task(billing_notifier(bot, session_pool))
 
     logger.info("[INFO] Бот запускается...")
+
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        logger.info("🧩 Shutting down gracefully...")
+        # отменяем все фоновые задачи
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for t in tasks:
+            t.cancel()
+
+        # закрываем сессию Telegram-бота
         await bot.session.close()
+
+        # даём немного времени задачам завершиться
+        await asyncio.sleep(0.1)
+
         logger.info("[INFO] Бот остановлен.")
 
 
@@ -215,4 +227,11 @@ try:
 except KeyboardInterrupt:
     logger.info("🛑 Bot stopped by user (KeyboardInterrupt)")
 finally:
+    # 🧩 Завершаем Hawk, чтобы не было "Task was destroyed but it is pending!"
+    try:
+        from core.monitoring.hawk_setup import close_hawk
+        asyncio.run(close_hawk())
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to close Hawk cleanly: {e}")
+
     loop.close()
