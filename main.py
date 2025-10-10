@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
 import asyncio
-import logging
+import structlog
 from aiogram import Bot, Dispatcher
+from middlewares.context_middleware import ContextMiddleware
+from prometheus_client import CollectorRegistry, generate_latest, CONTENT_TYPE_LATEST
+
+from core.logging_setup import setup_logging
 from config import BOT_TOKEN, NOTIFY_CHECK_INTERVAL_MIN, DATABASE_URL
 from database import init_db
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +31,7 @@ from handlers.important_stuff import router as important_router
 from handlers import admin_billing
 from handlers import admin
 from handlers import payments
+from handlers import example_handler
 
 # middlewares
 from middlewares.db_middleware import DbSessionMiddleware
@@ -34,6 +39,7 @@ from middlewares.role_checker import RoleCheckerMiddleware
 from middlewares.company_middleware import CompanyMiddleware
 from middlewares.subscription_checker import SubscriptionCheckerMiddleware
 from middlewares.audit_middleware import AuditMiddleware
+from middlewares.metrics_middleware import MetricsMiddleware, init_metrics
 
 # jobs
 from services.notify_jobs import (
@@ -43,40 +49,22 @@ from services.notify_jobs import (
 )
 from services.seed import seed_plans
 
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-
-
 # --- Hawk integration ---
-import hawkcatcher
+from core.monitoring.hawk_setup import setup_hawk, capture_exception, capture_message
 
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger(__name__)
+# --- Structlog logging setup ---
+setup_logging()
+logger = structlog.get_logger(__name__)
 
+# создаём отдельный реестр, чтобы избежать дубликатов
+registry = CollectorRegistry()
 
-# --- Hawk integration ---
-HAWK_TOKEN = os.getenv("HAWK_TOKEN")
-ENV_MODE = os.getenv("ENV_MODE", "unknown")
+# инициализируем метрики
+init_metrics(registry)
 
-if HAWK_TOKEN and ENV_MODE not in ("test", "ci"):
-    try:
-        hawkcatcher.init(HAWK_TOKEN)
-
-        # Отправляем тестовое событие (новый синтаксис Hawk)
-        hawkcatcher.send_event(
-            {
-                "message": "Hawk integration test",
-                "level": "info",
-                "context": {"env": ENV_MODE},
-            }
-        )
-        logger.info("✅ Hawk Catcher initialized and test event sent.")
-    except Exception as e:
-        logger.warning(f"⚠️ Hawk initialization failed: {e}")
-else:
-    logger.info("ℹ️ Hawk Catcher disabled — no HAWK_TOKEN provided or ENV_MODE=test/ci.")
+# Инициализация Hawk при старте
+setup_hawk()
 
 
 # --- Глобальный перехватчик необработанных ошибок ---
@@ -84,21 +72,29 @@ def handle_uncaught_exception(loop, context):
     msg = context.get("exception") or context.get("message")
     logger.error(f"🔥 Uncaught exception: {msg}")
 
-    if HAWK_TOKEN:
-        try:
-            hawkcatcher.capture_exception(context.get("exception"))
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to send exception to Hawk: {e}")
+    try:
+        if context.get("exception"):
+            capture_exception(context.get("exception"))
+        else:
+            capture_message(str(msg))
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to report error to Hawk: {e}")
 
 
 # --- Health-check server ---
 async def start_health_server():
-
     async def handle_health(request):
         return web.Response(text="OK", status=200)
 
     async def handle_metrics(request):
-        return web.Response(body=generate_latest(), content_type=CONTENT_TYPE_LATEST)
+        try:
+            data = generate_latest(registry)
+            # aiohttp >= 3.9 не принимает charset в content_type
+            safe_content_type = CONTENT_TYPE_LATEST.split(";")[0]
+            return web.Response(body=data, content_type=safe_content_type)
+        except Exception as e:
+            logger.exception("metrics endpoint error", error=str(e))
+            return web.Response(status=500, text=f"metrics error: {e}")
 
     app = web.Application()
     app.router.add_get("/healthz", handle_health)
@@ -109,6 +105,7 @@ async def start_health_server():
     port = int(os.getenv("PORT", 8080))
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
+
     logger.info(f"🩺 Health-check + Metrics запущены на порту {port}")
     logger.info("🟢 Bot ready: healthz OK, metrics OK, polling starting…")
 
@@ -117,8 +114,8 @@ async def main():
     # --- Log env info (safe) ---
     db_host = urlparse(DATABASE_URL).hostname
     logger.info("[BOOT] Запуск бота")
-    logger.info("[BOOT] DB host: %s", db_host)
-    logger.info("[BOOT] BOT_TOKEN: %s...", BOT_TOKEN[:6])
+    logger.info("[BOOT] DB host", db_host=db_host)
+    logger.info("[BOOT] BOT_TOKEN (prefix only)", prefix=BOT_TOKEN[:6])
 
     logger.info("[INFO] Инициализация базы данных...")
     session_pool: async_sessionmaker[AsyncSession] = await init_db()
@@ -152,6 +149,11 @@ async def main():
     dp.message.middleware(AuditMiddleware())
     dp.callback_query.middleware(AuditMiddleware())
 
+    dp.update.middleware(ContextMiddleware())
+
+    dp.message.middleware(MetricsMiddleware())
+    dp.callback_query.middleware(MetricsMiddleware())
+
     # routers
     dp.include_router(start_router)
     dp.include_router(help_router)
@@ -170,14 +172,29 @@ async def main():
     dp.include_router(payments.router)
     dp.include_router(admin.router)
 
+    # Пример логирования (тестовый хэндлер)
+    dp.include_router(example_handler.router)
+
     # фоновый воркер
     asyncio.create_task(billing_notifier(bot, session_pool))
 
     logger.info("[INFO] Бот запускается...")
+
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        logger.info("🧩 Shutting down gracefully...")
+        # отменяем все фоновые задачи
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for t in tasks:
+            t.cancel()
+
+        # закрываем сессию Telegram-бота
         await bot.session.close()
+
+        # даём немного времени задачам завершиться
+        await asyncio.sleep(0.1)
+
         logger.info("[INFO] Бот остановлен.")
 
 
@@ -204,4 +221,18 @@ if __name__ == "__main__":
         return loop
 
     loop = custom_loop()
+
+try:
     loop.run_until_complete(main())
+except KeyboardInterrupt:
+    logger.info("🛑 Bot stopped by user (KeyboardInterrupt)")
+finally:
+    # 🧩 Завершаем Hawk, чтобы не было "Task was destroyed but it is pending!"
+    try:
+        from core.monitoring.hawk_setup import close_hawk
+
+        asyncio.run(close_hawk())
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to close Hawk cleanly: {e}")
+
+    loop.close()

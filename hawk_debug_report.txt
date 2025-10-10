@@ -1,0 +1,154 @@
+🦅 === HAWK INTEGRATION DEBUG REPORT ===
+
+📦 Python packages:
+aiogram==3.10.0
+hawkcatcher==3.4.1
+structlog==25.4.0
+
+📂 Dependencies (requirements or pyproject):
+hawkcatcher
+
+⚙️ Logging setup (core/logging_setup.py):
+# saas_bot/core/logging_setup.py
+
+import sys
+import logging
+import structlog
+from core.context import request_id, user_id, company_id
+
+
+def add_context(logger, method_name, event_dict):
+    """
+    Добавляет контекстные поля из ContextVar'ов в каждый лог.
+    Вызывается structlog'ом как процессор.
+    """
+    event_dict["request_id"] = request_id.get()
+    event_dict["user_id"] = user_id.get()
+    event_dict["company_id"] = company_id.get()
+    return event_dict
+
+
+def setup_logging(level: int = logging.INFO):
+    """
+    Конфигурируем stdlib logging -> structlog.
+    Вызови setup_logging() очень рано при старте приложения.
+    """
+    logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
+
+    structlog.configure(
+        processors=[
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.add_log_level,
+            add_context,  # <-- наш контекстный процессор
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer(),
+        ],
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.make_filtering_bound_logger(level),
+        cache_logger_on_first_use=True,
+    )
+
+
+def get_logger(name: str | None = None):
+    """Удобный accessor — вызывай после setup_logging()."""
+    return structlog.get_logger(name)
+
+🪶 Hawk setup (core/monitoring/hawk_setup.py):
+import os
+import structlog
+import hawkcatcher
+
+logger = structlog.get_logger(__name__)
+
+
+def setup_hawk():
+    token = os.getenv("HAWK_TOKEN")
+
+    if not token:
+        logger.warning("⚠️ HAWK_TOKEN not provided — Hawk disabled.")
+        return
+
+    try:
+        hawkcatcher.init(api_key=token)
+        logger.info("🦅 Hawk initialized successfully")
+    except Exception as e:
+        logger.warning(f"⚠️ Hawk initialization failed: {e}")
+
+
+def capture_exception(e: Exception):
+    try:
+        hawkcatcher.capture_exception(e)
+    except Exception as err:
+        logger.warning(f"⚠️ Failed to send exception to Hawk: {err}")
+
+
+def capture_message(msg: str):
+    try:
+        hawkcatcher.capture_message(msg)
+    except Exception as err:
+        logger.warning(f"⚠️ Failed to send message to Hawk: {err}")
+
+🔍 Usage of Hawk across project:
+core/monitoring/hawk_setup.py:3:import hawkcatcher
+core/monitoring/hawk_setup.py:8:def setup_hawk():
+core/monitoring/hawk_setup.py:16:        hawkcatcher.init(api_key=token)
+core/monitoring/hawk_setup.py:24:        hawkcatcher.capture_exception(e)
+core/monitoring/hawk_setup.py:31:        hawkcatcher.capture_message(msg)
+
+🚀 Main entrypoint snippet (main.py - first 50 lines):
+# -*- coding: utf-8 -*-
+import os
+import asyncio
+import structlog
+from aiogram import Bot, Dispatcher
+from middlewares.context_middleware import ContextMiddleware
+from prometheus_client import (
+    Counter,
+    Histogram,
+    CollectorRegistry,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+)
+from core.logging_setup import setup_logging
+from config import BOT_TOKEN, NOTIFY_CHECK_INTERVAL_MIN, DATABASE_URL
+from database import init_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio.session import async_sessionmaker
+from aiohttp import web
+from urllib.parse import urlparse
+
+# routers
+from handlers.start import router as start_router
+from handlers.help import router as help_router
+from handlers.company import router as company_router
+from handlers.invite import router as invite_router
+from handlers.projects import router as projects_router
+from handlers.tasks import router as tasks_router
+from handlers.reassign import router as reassign_router
+from handlers.status import router as status_router
+from handlers.reports import router as reports_router
+from handlers.user import router as user_router
+from handlers.file_upload import router as file_upload_router
+from handlers.files import router as files_router
+from handlers.important_stuff import router as important_router
+from handlers import admin_billing
+from handlers import admin
+from handlers import payments
+from handlers import example_handler
+
+
+# middlewares
+from middlewares.db_middleware import DbSessionMiddleware
+from middlewares.role_checker import RoleCheckerMiddleware
+from middlewares.company_middleware import CompanyMiddleware
+from middlewares.subscription_checker import SubscriptionCheckerMiddleware
+from middlewares.audit_middleware import AuditMiddleware
+
+# jobs
+from services.notify_jobs import (
+
+🌍 Environment variables related to Hawk:
+HAWK_TOKEN=dummy
+
+✅ Done. Collected Hawk diagnostic info.
