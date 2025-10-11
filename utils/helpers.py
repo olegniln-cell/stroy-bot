@@ -22,16 +22,23 @@ def format_tasks_list(tasks: list[Task]) -> str:
     if not tasks:
         return "Задачи не найдены."
 
-    text = "Список задач:\n"
+    text = "📋 *Ваши задачи:*\n"
     for task in tasks:
-        # Проверяем, что объект project существует, чтобы избежать ошибок
         project_name = task.project.name if task.project else "Неизвестный проект"
-        text += f"\nЗадача ID: {task.id}\n"
-        text += f"  - Название: {task.title}\n"
-        text += f"  - Проект: {project_name}\n"
-        text += f"  - Статус: {task.status}\n"
+        status_emoji = {
+            "todo": "🕐",
+            "in_progress": "🛠",
+            "ready": "✅",
+        }.get(task.status, "📌")
 
+        text += (
+            f"\n{status_emoji} *{task.title}*\n"
+            f"  ├ Проект: {project_name}\n"
+            f"  ├ Статус: {task.status}\n"
+            f"  └ ID: {task.id}\n"
+        )
     return text
+
 
 
 def get_current_time_str() -> str:
