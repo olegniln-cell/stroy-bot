@@ -8,7 +8,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Все тексты можно будет потом вынести в messages.yaml
 TASK_MESSAGES = {
     "new_task": "🆕 Новая задача: *{title}*\nПроект: {project}\nОписание: {description}",
     "taken": "🛠 {worker_name} взял задачу *{title}* в работу.",
@@ -20,12 +19,12 @@ TASK_MESSAGES = {
 }
 
 
-async def _get_manager_and_foreman(session: AsyncSession, company_id: int):
-    """Находим пользователей с ролями manager/foreman."""
+async def _get_managers_and_foremen(session: AsyncSession, company_id: int):
+    """Возвращает менеджеров и прорабов компании."""
     result = await session.execute(
         User.__table__.select().where(User.company_id == company_id)
     )
-    users = result.fetchall()
+    users = [User(**row) for row in result.mappings()]
     return [
         u for u in users if u.role in (UserRole.manager.value, UserRole.foreman.value)
     ]
@@ -38,10 +37,10 @@ async def send_task_notification(
     template_key: str,
     actor_name: str | None = None,
 ):
-    """Отправляет уведомления нужным участникам по типу события."""
-    text = TASK_MESSAGES[template_key].format(
+    """Отправляет уведомления нужным участникам по событию."""
+    text = TASK_MESSAGES.get(template_key, "ℹ️ Обновление задачи.").format(
         title=task.title,
-        project=task.project_id,
+        project=getattr(task, "project_id", "—"),
         description=task.description or "—",
         worker_name=actor_name or "Исполнитель",
         deadline=getattr(task, "deadline", "не задан"),
@@ -49,28 +48,26 @@ async def send_task_notification(
 
     recipients = []
 
-    # 1. Кому отправлять?
     if template_key == "new_task":
-        # Рабочему, если назначен
+        # Исполнитель
         if task.user_id:
-            user = await session.get(User, task.user_id)
-            if user and user.tg_id:
-                recipients.append(user.tg_id)
+            worker = await session.get(User, task.user_id)
+            if worker and worker.tg_id:
+                recipients.append(worker.tg_id)
     elif template_key in ("taken", "completed", "approved", "rejected"):
-        # Менеджеру и прорабу
-        managers = await _get_manager_and_foreman(session, task.company_id)
+        # Менеджеры и прорабы
+        managers = await _get_managers_and_foremen(session, task.company_id)
         recipients.extend([u.tg_id for u in managers if u.tg_id])
-    elif template_key in ("deadline_soon", "deadline_overdue"):
+    elif template_key.startswith("deadline_"):
         # Исполнителю
-        user = await session.get(User, task.user_id)
-        if user and user.tg_id:
-            recipients.append(user.tg_id)
+        worker = await session.get(User, task.user_id)
+        if worker and worker.tg_id:
+            recipients.append(worker.tg_id)
 
-    # 2. Отправляем сообщения
-    for tg_id in recipients:
+    for tg_id in set(recipients):
         try:
             await bot.send_message(chat_id=tg_id, text=text, parse_mode="Markdown")
         except Exception as e:
             logger.error(
-                f"Не удалось отправить уведомление {template_key} пользователю {tg_id}: {e}"
+                f"Ошибка при отправке уведомления {template_key} пользователю {tg_id}: {e}"
             )

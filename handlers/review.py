@@ -35,8 +35,6 @@ def review_keyboard(task_id: int) -> InlineKeyboardMarkup:
 
 
 # ======== HANDLERS ==========
-
-
 @router.message(Command("review_task"))
 @is_manager_or_foreman
 async def review_task_cmd(message: types.Message, session: AsyncSession, user: User):
@@ -65,8 +63,6 @@ async def review_task_cmd(message: types.Message, session: AsyncSession, user: U
 
 
 # ======== CALLBACKS ==========
-
-
 @router.callback_query(lambda c: c.data.startswith("approve_task:"))
 async def approve_task_cb(
     callback: CallbackQuery, session: AsyncSession, user: User, bot
@@ -74,8 +70,12 @@ async def approve_task_cb(
     """Принимаем задачу."""
     task_id = int(callback.data.split(":")[1])
     task = await set_task_status(
-        session, task_id, TaskStatus.ready.value, user.company_id
+        session, task_id, TaskStatus.approved.value, user.company_id
     )
+    if not task:
+        await callback.answer("Задача не найдена.")
+        return
+
     await session.commit()
 
     await log_action(
@@ -84,16 +84,15 @@ async def approve_task_cb(
         user.tg_id,
         "approve_task",
         "Task",
-        task_id,
+        task.id,
         {"status": task.status},
     )
     await send_task_notification(
-        bot, session, task, "approved", user.username or user.tg_id
+        bot, session, task, "approved", user.username or str(user.tg_id)
     )
 
     await callback.message.edit_text(
-        f"🎯 Задача *{task.title}* принята.",
-        parse_mode="Markdown",
+        f"🎯 Задача *{task.title}* принята.", parse_mode="Markdown"
     )
     await callback.answer("Задача принята ✅")
 
@@ -107,6 +106,10 @@ async def reject_task_cb(
     task = await set_task_status(
         session, task_id, TaskStatus.in_progress.value, user.company_id
     )
+    if not task:
+        await callback.answer("Задача не найдена.")
+        return
+
     await session.commit()
 
     await log_action(
@@ -115,15 +118,14 @@ async def reject_task_cb(
         user.tg_id,
         "reject_task",
         "Task",
-        task_id,
+        task.id,
         {"status": task.status},
     )
     await send_task_notification(
-        bot, session, task, "rejected", user.username or user.tg_id
+        bot, session, task, "rejected", user.username or str(user.tg_id)
     )
 
     await callback.message.edit_text(
-        f"⚠️ Задача *{task.title}* отправлена на доработку.",
-        parse_mode="Markdown",
+        f"⚠️ Задача *{task.title}* отправлена на доработку.", parse_mode="Markdown"
     )
     await callback.answer("Отправлено на доработку 🔁")
