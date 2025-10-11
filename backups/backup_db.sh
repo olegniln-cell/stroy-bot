@@ -22,4 +22,6 @@ pg_dump -h "${HOST}" -p "${PORT}" -U "${USER}" -Fc "${DB}" | gzip -9 > "${FNAME}
     exit 1
 }
 
+# 🔥 Удаляем старые бэкапы старше 7 дней
+find "${OUT_DIR}" -name "*.sql.gz" -mtime +7 -delete
 echo "✅ Backup saved to ${FNAME}"
