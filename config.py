@@ -7,7 +7,7 @@ load_dotenv(".env")
 
 # --- Базовые флаги окружения ---
 ENV = os.getenv("ENV", "local")  # возможные значения: local, staging, production
-DEBUG = ENV != "production"      # удобно использовать в логах, алертах и т.д.
+DEBUG = ENV != "production"  # удобно использовать в логах, алертах и т.д.
 
 
 # --- Основные настройки ---

@@ -75,7 +75,10 @@ async def _get_plan(session: AsyncSession, plan_code: str) -> Plan | None:
     q = await session.execute(select(Plan).where(Plan.code == plan_code))
     return q.scalar_one_or_none()
 
-async def _get_last_subscription(session: AsyncSession, company_id: int) -> Subscription | None:
+
+async def _get_last_subscription(
+    session: AsyncSession, company_id: int
+) -> Subscription | None:
     """Возвращает последнюю (по expires_at) подписку компании."""
     q = await session.execute(
         select(Subscription)
@@ -127,11 +130,6 @@ async def start_paid_subscription(
 
 
 async def pause_subscription(session: AsyncSession, company_id: int) -> bool:
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
     sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
@@ -142,11 +140,6 @@ async def pause_subscription(session: AsyncSession, company_id: int) -> bool:
 
 
 async def resume_subscription(session: AsyncSession, company_id: int) -> bool:
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
     sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
@@ -157,11 +150,6 @@ async def resume_subscription(session: AsyncSession, company_id: int) -> bool:
 
 
 async def cancel_subscription(session: AsyncSession, company_id: int) -> bool:
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
     sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
@@ -173,11 +161,6 @@ async def cancel_subscription(session: AsyncSession, company_id: int) -> bool:
 
 async def mark_expired_if_needed(session: AsyncSession, company_id: int) -> bool:
     """Если активная подписка просрочена — ставим expired."""
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
     sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
@@ -245,11 +228,6 @@ async def get_company_subscription_status(
     t = q_t.scalar_one_or_none()
 
     # last subscription
-    q_s = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
     s = await _get_last_subscription(session, company_id)
 
     trial_active = bool(t and t.is_active and t.expires_at > datetime.now(UTC))
