@@ -10,7 +10,6 @@ from sqlalchemy import select
 from models.audit_log import AuditLog
 
 
-
 @pytest.mark.smoke
 @pytest.mark.smoke_core
 @pytest.mark.asyncio
@@ -48,16 +47,14 @@ async def test_core_flow(session):
     assert any(t.id == task.id for t in my_tasks)
 
     # ✅ Проверка смены статуса задачи
-    from utils.enums import TaskStatus
-    from services.tasks import set_task_status
 
-    task2 = await set_task_status(session, task.id, TaskStatus.in_progress.value, company.id)
+    task2 = await set_task_status(
+        session, task.id, TaskStatus.in_progress.value, company.id
+    )
     await session.commit()
     assert task2.status == TaskStatus.in_progress.value
 
     # ✅ Проверка, что аудит записался
-    from sqlalchemy import select
-    from models.audit_log import AuditLog
 
     logs = (await session.execute(select(AuditLog))).scalars().all()
     assert len(logs) >= 1

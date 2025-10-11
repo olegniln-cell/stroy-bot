@@ -6,7 +6,6 @@ from typing import Optional
 from services.audit import log_action
 
 
-
 async def create_task(
     session: AsyncSession,
     title: str,
@@ -26,7 +25,7 @@ async def create_task(
         )
         session.add(new_task)
         await session.flush()
-        #await session.commit()   Удаляем commit внутри service — commit должен быть в handler
+        # await session.commit()   Удаляем commit внутри service — commit должен быть в handler
         await session.refresh(new_task)  # Обновляем объект
         return new_task
     except Exception as e:
@@ -90,12 +89,12 @@ async def set_task_status(
     # ✅ создаём запись в аудит-логе
     await log_action(
         session=session,
-        actor_user_id=None,        # если знаешь user_id, можно передать его сюда
-        actor_tg_id=None,          # аналогично, если доступен tg_id
+        actor_user_id=None,  # если знаешь user_id, можно передать его сюда
+        actor_tg_id=None,  # аналогично, если доступен tg_id
         action="status_changed",
         entity_type="task",
         entity_id=task_id,
         payload={"new_status": status},
     )
-    
+
     return task

@@ -170,9 +170,7 @@ reset1: ## Полный сброс окружения: удалить конте
 	sleep 5
 	docker-compose run --rm bot alembic upgrade head
 	# применяем миграции к тестовой БД
-	docker-compose run --rm bot alembic -x db_url=postgresql+psycopg2://saasuser:saaspass@saasbot_test_db:5432/saasdb_test upgrade head
-
-
+	docker-compose -f docker-compose.test.yml run --rm bot alembic upgrade head
 
 reset:
 	@echo "🔍 Проверка volume перед сбросом..."

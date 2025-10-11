@@ -13,7 +13,6 @@ from services.tasks import (
 )
 from services.projects import get_project_by_id_and_company
 from services.audit import log_action
-from utils.helpers import format_tasks_list
 from utils.decorators import is_manager_or_foreman
 from utils.enums import TaskStatus
 import logging
@@ -23,25 +22,50 @@ logger = logging.getLogger(__name__)
 
 # ========== HELPERS ==========
 
+
 def task_inline_keyboard(task_id: int, status: str) -> InlineKeyboardMarkup:
     """Создаёт клавиатуру под задачей в зависимости от статуса."""
     buttons = []
 
     if status == TaskStatus.todo.value:
-        buttons.append([InlineKeyboardButton(text="✅ Взять в работу", callback_data=f"take_task:{task_id}")])
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text="✅ Взять в работу", callback_data=f"take_task:{task_id}"
+                )
+            ]
+        )
     elif status == TaskStatus.in_progress.value:
-        buttons.append([
-    #        InlineKeyboardButton(text="📎 Прикрепить фото", callback_data=f"attach_file:{task_id}"),
-            InlineKeyboardButton(text="✅ Завершить", callback_data=f"complete_task:{task_id}"),
-        ])
+        buttons.append(
+            [
+                #        InlineKeyboardButton(text="📎 Прикрепить фото", callback_data=f"attach_file:{task_id}"),
+                InlineKeyboardButton(
+                    text="✅ Завершить", callback_data=f"complete_task:{task_id}"
+                ),
+            ]
+        )
     elif status == TaskStatus.ready.value:
-        buttons.append([InlineKeyboardButton(text="🔍 Проверить", callback_data=f"review_task:{task_id}")])
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text="🔍 Проверить", callback_data=f"review_task:{task_id}"
+                )
+            ]
+        )
 
     # Общие кнопки
-    buttons.append([InlineKeyboardButton(text="📄 Подробнее", callback_data=f"details_task:{task_id}")])
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                text="📄 Подробнее", callback_data=f"details_task:{task_id}"
+            )
+        ]
+    )
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+
 # ========== COMMAND HANDLERS ==========
+
 
 @router.message(Command("add_task"))
 @is_manager_or_foreman
@@ -50,7 +74,9 @@ async def add_task_cmd(message: types.Message, session: AsyncSession, user: User
 
     args = message.text.split(maxsplit=3)
     if len(args) < 3:
-        await message.answer("Используй формат: /add_task <project_id> <заголовок> [описание]")
+        await message.answer(
+            "Используй формат: /add_task <project_id> <заголовок> [описание]"
+        )
         return
 
     try:
@@ -66,7 +92,9 @@ async def add_task_cmd(message: types.Message, session: AsyncSession, user: User
         await message.answer("Проект не найден или не принадлежит вашей компании.")
         return
 
-    task = await create_task(session, title, description, project_id, user.company_id, user.id)
+    task = await create_task(
+        session, title, description, project_id, user.company_id, user.id
+    )
 
     await log_action(
         session,
@@ -113,13 +141,17 @@ async def my_tasks_cmd(message: types.Message, session: AsyncSession, user: User
             parse_mode="Markdown",
         )
 
+
 # ========== CALLBACKS ==========
+
 
 @router.callback_query(lambda c: c.data.startswith("take_task:"))
 async def take_task_cb(callback: CallbackQuery, session: AsyncSession, user: User):
     """Рабочий берёт задачу в работу."""
     task_id = int(callback.data.split(":")[1])
-    task = await set_task_status(session, task_id, TaskStatus.in_progress.value, user.company_id)
+    task = await set_task_status(
+        session, task_id, TaskStatus.in_progress.value, user.company_id
+    )
     if not task:
         await callback.answer("❌ Задача не найдена или недоступна.")
         return
@@ -137,13 +169,13 @@ async def take_task_cb(callback: CallbackQuery, session: AsyncSession, user: Use
     )
 
     await log_action(
-    session,
-    actor_user_id=user.id,
-    actor_tg_id=user.tg_id,
-    action="take_task",
-    entity_type="Task",
-    entity_id=task.id,
-    payload={"status": task.status},
+        session,
+        actor_user_id=user.id,
+        actor_tg_id=user.tg_id,
+        action="take_task",
+        entity_type="Task",
+        entity_id=task.id,
+        payload={"status": task.status},
     )
     await session.commit()
 
@@ -154,7 +186,9 @@ async def take_task_cb(callback: CallbackQuery, session: AsyncSession, user: Use
 async def complete_task_cb(callback: CallbackQuery, session: AsyncSession, user: User):
     """Рабочий завершает задачу."""
     task_id = int(callback.data.split(":")[1])
-    task = await set_task_status(session, task_id, TaskStatus.ready.value, user.company_id)
+    task = await set_task_status(
+        session, task_id, TaskStatus.ready.value, user.company_id
+    )
     await session.commit()
 
     if not task:
@@ -167,7 +201,15 @@ async def complete_task_cb(callback: CallbackQuery, session: AsyncSession, user:
         parse_mode="Markdown",
     )
 
-    await log_action(session, user.id, user.tg_id, "complete_task", "Task", task.id, {"status": task.status})
+    await log_action(
+        session,
+        user.id,
+        user.tg_id,
+        "complete_task",
+        "Task",
+        task.id,
+        {"status": task.status},
+    )
     await callback.answer("Отправлено на проверку 🔍")
 
 

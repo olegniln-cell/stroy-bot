@@ -40,7 +40,6 @@ def format_tasks_list(tasks: list[Task]) -> str:
     return text
 
 
-
 def get_current_time_str() -> str:
     """
     Возвращает текущее время в строковом формате.
