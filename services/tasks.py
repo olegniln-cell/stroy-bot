@@ -3,6 +3,7 @@ from sqlalchemy import select
 from models.task import Task
 from datetime import datetime, UTC
 from typing import Optional
+from services.audit import log_action
 
 
 async def create_task(
@@ -24,7 +25,7 @@ async def create_task(
         )
         session.add(new_task)
         await session.flush()
-        await session.commit()  # Добавляем коммит
+        # await session.commit()   Удаляем commit внутри service — commit должен быть в handler
         await session.refresh(new_task)  # Обновляем объект
         return new_task
     except Exception as e:
@@ -76,11 +77,24 @@ async def set_task_status(
 ) -> Optional[Task]:
     """
     Устанавливает статус для задачи, с проверкой принадлежности к компании.
+    Также создаёт запись в аудит-логе.
     """
-    task = await get_task_by_id_and_company(
-        session, task_id, company_id
-    )  # <- Используем новую функцию
-    if task:
-        task.status = status
-        session.add(task)
+    task = await get_task_by_id_and_company(session, task_id, company_id)
+    if not task:
+        return None
+
+    task.status = status
+    session.add(task)
+
+    # ✅ создаём запись в аудит-логе
+    await log_action(
+        session=session,
+        actor_user_id=None,  # если знаешь user_id, можно передать его сюда
+        actor_tg_id=None,  # аналогично, если доступен tg_id
+        action="status_changed",
+        entity_type="task",
+        entity_id=task_id,
+        payload={"new_status": status},
+    )
+
     return task

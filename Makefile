@@ -170,9 +170,7 @@ reset1: ## Полный сброс окружения: удалить конте
 	sleep 5
 	docker-compose run --rm bot alembic upgrade head
 	# применяем миграции к тестовой БД
-	docker-compose run --rm bot alembic -x db_url=postgresql+psycopg2://saasuser:saaspass@saasbot_test_db:5432/saasdb_test upgrade head
-
-
+	docker-compose -f docker-compose.test.yml run --rm bot alembic upgrade head
 
 reset:
 	@echo "🔍 Проверка volume перед сбросом..."
@@ -565,7 +563,7 @@ puch: ## Пушим изменения в main
 	git push origin main
 
 p2: ## Пушим в ветку
-	git push origin feature/observability
+	git push origin feature/phase4-observability
 
 
 
@@ -601,16 +599,18 @@ delvgit: ## Удаляем ветку на GitHub (удалённую)
 remgit: ## проверка какой сейчас - переключение между репозиториями
 	git remote -v
 
-civet: ## добавить новую ветку
-	git checkout -b feature/observability
+# Убедись, что ты на последней версии main
+	# git checkout main
+	# git pull origin main
 
-punv: ## пуш новой ветки в гитхаб
-	git push -u origin feature/observability
+newvet1: ## Создай и сразу переключись на новую ветку
+	git checkout -b feature/phase4-observability
+
+punv: ## Зафиксировать ветку на GitHub пуш новой ветки в гитхаб
+	git push -u origin feature/phase4-observability
 
 
-delvet: ## Удалится ненужная ветка (уже влитая)
-	git branch -d ci/unit-tests-fix
-
+# дополнительно
 
 ydi: ## удалить файл из индекса
 	git rm --cached migrations/versions/имя-файла.py
@@ -698,11 +698,56 @@ dsd: ## посмотреть, что именно занимает место:
 
 
 # ===============================
-# 🔹  востановление базы данных
+# 🔹  востановление базы данных полоавтоматическое еще надо настроить
 # ===============================
 
-backup_db: ## создать базу в ручную
-	docker-compose exec backup /backups/backup_db.sh
+db-backup1: # Сделать бэкап вручную
+	@echo "📦 Creating backup..."
+	@docker exec saasbot_backup /backups_scripts/backup_db.sh
+	@echo "✅ Backup created."
 
-restore_db: ## откатить базу к нужной версии из файла backups
-	docker-compose exec backup /backups/restore_db.sh /backups/backup_saasdb_20251009192453.sql.gz
+db-restore-latest: # Восстановить последнюю копию
+	@LATEST_FILE=$$(ls -t backups/backup_saasdb_*.sql.gz | head -n 1); \
+	echo "♻️  Restoring from $$LATEST_FILE..."; \
+	docker exec -i saasbot_db bash -c "gunzip -c /backups/$$(basename $$LATEST_FILE) | pg_restore -U saasuser -d saasdb -c"; \
+	echo "✅ Restore complete."
+
+db-verify-backup: # Проверить целостность (в test_db)
+	@LATEST_FILE=$$(ls -t backups/backup_saasdb_*.sql.gz | head -n 1); \
+	echo "🧪 Verifying $$LATEST_FILE..."; \
+	docker exec -i saasbot_test_db bash -c "gunzip -c /backups/$$(basename $$LATEST_FILE) | pg_restore -U saasuser -d saasdb -c"; \
+	echo "✅ Backup verified successfully."
+
+# Показать список бэкапов
+db-list-backups:
+	@docker exec saasbot_db ls -lh /backups | tail -n +2
+
+
+# ===============================
+# 🔹  востановление базы данных в ручную
+# ===============================
+
+kpu: # Убедись, что контейнер saasbot_db запущен:
+	docker ps | grep saasbot_db
+
+bec: # Кинь бэкап внутрь контейнера нужного бекапа
+	docker cp backups/backup_saasdb_20251010074500.sql.gz saasbot_db:/tmp/backup.sql.gz
+
+vnb: # Подключись внутрь базы:
+	docker exec -it saasbot_db bash
+
+pr1: # Убедись, что никто не подключен:
+	psql -U saasuser -d postgres -c "SELECT pid, datname, usename, client_addr FROM pg_stat_activity WHERE datname='saasdb';"
+	# Если увидишь сессии — можешь их убить:
+	psql -U saasuser -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='saasdb';"
+
+delbd: # Удали старую базу и создай заново:
+	export PGPASSWORD=saaspass
+	psql -U saasuser -d postgres -c "DROP DATABASE IF EXISTS saasdb;"
+	psql -U saasuser -d postgres -c "CREATE DATABASE saasdb;"
+
+vbek: # Восстанови бэкап:
+	gunzip -c /tmp/backup.sql.gz | pg_restore -U saasuser -d saasdb -h localhost
+
+prov: # Проверь, что восстановилось:
+	psql -U saasuser -d saasdb -c "\dt"

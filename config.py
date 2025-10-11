@@ -1,11 +1,24 @@
 import os
 from dotenv import load_dotenv
 
+# --- Загружаем окружение ---
 load_dotenv(".env.local", override=True)
 load_dotenv(".env")
 
+# --- Базовые флаги окружения ---
+ENV = os.getenv("ENV", "local")  # возможные значения: local, staging, production
+DEBUG = ENV != "production"  # удобно использовать в логах, алертах и т.д.
+
+
+# --- Основные настройки ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Проверяем, что обязательные переменные заданы
+if not BOT_TOKEN:
+    raise RuntimeError("BOT_TOKEN is not set in environment")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set in environment")
 
 
 # Переменные для S3 / MinIO

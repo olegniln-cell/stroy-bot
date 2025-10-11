@@ -1,4 +1,4 @@
-# services/subscription.py
+# services/subscriptions.py
 import logging
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
@@ -76,10 +76,26 @@ async def _get_plan(session: AsyncSession, plan_code: str) -> Plan | None:
     return q.scalar_one_or_none()
 
 
+async def _get_last_subscription(
+    session: AsyncSession, company_id: int
+) -> Subscription | None:
+    """Возвращает последнюю (по expires_at) подписку компании."""
+    q = await session.execute(
+        select(Subscription)
+        .where(Subscription.company_id == company_id)
+        .order_by(Subscription.expires_at.desc())
+    )
+    return q.scalars().first()
+
+
 async def start_paid_subscription(
     session: AsyncSession, company_id: int, plan_code: str, months: int = 1
 ) -> Subscription:
     """Активирует платную подписку (без интеграции с платежкой)."""
+
+    if not company_id:
+        raise ValueError("company_id is required to start a subscription")
+
     plan = await _get_plan(session, plan_code)
     if not plan:
         raise ValueError(f"Plan '{plan_code}' not found")
@@ -114,55 +130,38 @@ async def start_paid_subscription(
 
 
 async def pause_subscription(session: AsyncSession, company_id: int) -> bool:
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
-    sub = q.scalars().first()
+    sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
     sub.status = SubscriptionStatus.paused.value
     await session.flush()
+    logger.info("Paused subscription for company_id=%s", company_id)
     return True
 
 
 async def resume_subscription(session: AsyncSession, company_id: int) -> bool:
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
-    sub = q.scalars().first()
+    sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
     sub.status = SubscriptionStatus.active.value
     await session.flush()
+    logger.info("Resumed subscription for company_id=%s", company_id)
     return True
 
 
 async def cancel_subscription(session: AsyncSession, company_id: int) -> bool:
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
-    sub = q.scalars().first()
+    sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
     sub.status = SubscriptionStatus.canceled.value
     await session.flush()
+    logger.info("Canceled subscription for company_id=%s", company_id)
     return True
 
 
 async def mark_expired_if_needed(session: AsyncSession, company_id: int) -> bool:
     """Если активная подписка просрочена — ставим expired."""
-    q = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
-    sub = q.scalars().first()
+    sub = await _get_last_subscription(session, company_id)
     if not sub:
         return False
     now = datetime.now(UTC)
@@ -229,12 +228,7 @@ async def get_company_subscription_status(
     t = q_t.scalar_one_or_none()
 
     # last subscription
-    q_s = await session.execute(
-        select(Subscription)
-        .where(Subscription.company_id == company_id)
-        .order_by(Subscription.expires_at.desc())
-    )
-    s = q_s.scalars().first()
+    s = await _get_last_subscription(session, company_id)
 
     trial_active = bool(t and t.is_active and t.expires_at > datetime.now(UTC))
     sub_active = bool(
@@ -262,21 +256,13 @@ async def get_company_subscription_status(
 
 
 # Алиас для обратной совместимости
-async def create_subscription(
-    session, company_id, plan_code, actor_id=None, commit=True
-):
-    """
-    Старый алиас для set_plan_for_company, оставлен для обратной совместимости.
-    Поддерживает actor_id и commit, хотя set_plan_for_company их не принимает.
-    """
+async def create_subscription(session, company_id, plan_code, actor_id=None):
     sub = await set_plan_for_company(
         session=session,
         company_id=company_id,
         plan_code=plan_code,
-        months=1,  # можно расширить, если нужно
+        months=1,
     )
-    if commit:
-        await session.commit()
     return sub
 
 

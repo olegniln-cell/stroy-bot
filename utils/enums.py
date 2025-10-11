@@ -12,10 +12,11 @@ class UserRole(str, enum.Enum):
 
 
 class TaskStatus(str, enum.Enum):
-    todo = "todo"
-    new = "new"
-    in_progress = "in_progress"
-    ready = "ready"
+    todo = "todo"  # задача создана
+    in_progress = "in_progress"  # в работе
+    ready = "ready"  # на проверке (готово к ревью)
+    approved = "approved"  # ✅ одобрено
+    rework = "rework"  # 🔄 отправлено на доработку
 
 
 class SubscriptionStatus(str, enum.Enum):

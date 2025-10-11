@@ -16,6 +16,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - backups_data:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -30,8 +31,8 @@ services:
     container_name: saasbot_test_db
     restart: unless-stopped
     env_file:
-      - .env.test   # ✅ используем только этот файл
-    environment: {}  # ✅ пусто, чтобы не переопределялось из .env
+      - .env.test
+    environment: {}
     ports:
       - "5433:5432"
     tmpfs:
@@ -181,8 +182,9 @@ services:
 
 volumes:
   postgres_data:
-    name: saas_bot_postgres_data  # фиксируем имя, чтобы Docker всегда использовал один и тот же volume
-  postgres_test_data:
+    name: saas_bot_postgres_data
+  backups_data:              # ✅ постоянный volume под бэкапы
+    name: saas_bot_backups
   minio_data:
 
 networks:
