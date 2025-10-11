@@ -52,6 +52,9 @@ from services.seed import seed_plans
 # --- Hawk integration ---
 from core.monitoring.hawk_setup import setup_hawk, capture_exception, capture_message
 
+# --- фоновые напоминания просроченных задач  ---
+from services.notifications.scheduler import start_scheduler
+
 
 # --- Structlog logging setup ---
 setup_logging()
@@ -177,6 +180,10 @@ async def main():
 
     # фоновый воркер
     asyncio.create_task(billing_notifier(bot, session_pool))
+
+    # --- Планировщик дедлайнов задач ---
+
+    start_scheduler(bot, session_pool)
 
     logger.info("[INFO] Бот запускается...")
 

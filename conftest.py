@@ -12,6 +12,10 @@ from alembic import command
 from models.base import Base
 from dotenv import load_dotenv
 
+from aiogram import Bot
+from types import SimpleNamespace
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -133,3 +137,36 @@ def db_session():
         session.rollback()
         session.close()
         sync_engine.dispose()
+
+
+# ----------------------
+# 🔹 Bot mock fixture (для smoke-тестов уведомлений)
+# ----------------------
+
+
+class DummyBot(Bot):
+    """Минимальный бот-заглушка, не делает реальных запросов в Telegram API."""
+
+    async def send_message(self, chat_id, text, **kwargs):
+        print(f"[BOT MOCK] -> chat_id={chat_id} | text={text}")
+        return {"ok": True, "chat_id": chat_id, "text": text}
+
+
+# @pytest_asyncio.fixture
+# async def bot():
+#    """Фикстура тестового бота."""
+#    bot = DummyBot(token="TEST_TOKEN")
+#    yield bot
+#    await bot.session.close()
+
+
+@pytest_asyncio.fixture
+async def bot_mock():
+    """Фейковый бот для тестов — не требует реального токена и API."""
+
+    class DummyBot:
+        async def send_message(self, chat_id, text, **kwargs):
+            print(f"[MockBot] → {chat_id}: {text}")
+            return SimpleNamespace(message_id=1)
+
+    return DummyBot()
